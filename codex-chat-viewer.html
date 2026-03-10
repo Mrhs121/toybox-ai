@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codex 对话记录查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e4e4e4;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .meta {
+            margin-top: 10px;
+            color: #888;
+            font-size: 14px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .file-upload {
+            text-align: center;
+            margin: 20px 0;
+            padding: 40px;
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: #00d4ff;
+            background: rgba(0,212,255,0.05);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .file-upload label {
+            cursor: pointer;
+            display: block;
+        }
+
+        .file-upload .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-upload p {
+            color: #888;
+        }
+
+        .conversation {
+            display: none;
+        }
+
+        .conversation.active {
+            display: block;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 用户消息靠右 */
+        .message.user {
+            align-items: flex-end;
+            margin-left: 20%;
+        }
+
+        /* 助手消息和开发者靠左 */
+        .message.assistant,
+        .message.developer {
+            align-items: flex-start;
+            margin-right: 20%;
+        }
+
+        /* 用户消息的气泡最大宽度 */
+        .message.user .message-content {
+            max-width: 90%;
+        }
+
+        /* 助手消息的气泡最大宽度 */
+        .message.assistant .message-content,
+        .message.developer .message-content {
+            max-width: 95%;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        /* 用户消息头部靠右 */
+        .message.user .message-header {
+            flex-direction: row-reverse;
+        }
+
+        /* 用户消息头部靠右 */
+        .message.user .message-header {
+            flex-direction: row-reverse;
+        }
+
+        .message-role {
+            font-size: 13px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+        }
+
+        .message-role.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-role.assistant {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .message-role.developer {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .message-role.system {
+            background: #444;
+            color: #aaa;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .message-content {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            position: relative;
+            word-wrap: break-word; /* 允许单词内部折行 */
+            overflow-wrap: break-word; /* 保证长文本和链接可以换行 */
+            word-break: break-all; /* 防止长串字符撑破容器 */
+        }
+
+        .message.user .message-content {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .message.assistant .message-content {
+            background: rgba(17, 153, 142, 0.1);
+            border-color: rgba(17, 153, 142, 0.2);
+        }
+
+        .message-content pre {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .message-content code {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .message-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .message-content p {
+            margin: 10px 0;
+        }
+
+        .message-content p:first-child {
+            margin-top: 0;
+        }
+
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-content ul, .message-content ol {
+            margin: 10px 0;
+            padding-left: 25px;
+        }
+
+        .message-content li {
+            margin: 5px 0;
+        }
+
+        .message-content h1, .message-content h2, .message-content h3 {
+            margin: 15px 0 10px 0;
+            color: #fff;
+        }
+
+        .message-content h1:first-child, .message-content h2:first-child, .message-content h3:first-child {
+            margin-top: 0;
+        }
+
+        .message-content blockquote {
+            border-left: 3px solid #00d4ff;
+            padding-left: 15px;
+            margin: 10px 0;
+            color: #aaa;
+        }
+
+        .message-content a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
+        }
+
+        .message-content.collapsed {
+            max-height: 200px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .message-content.collapsed::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 80px;
+            background: linear-gradient(transparent, rgba(26, 26, 46, 0.95));
+        }
+
+        .expand-btn {
+            display: none;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .message-content.collapsed + .expand-btn {
+            display: inline-block;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .filter-btn.active {
+            background: #00d4ff;
+            border-color: #00d4ff;
+            color: #1a1a2e;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e4e4e4;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-box input:focus {
+            border-color: #00d4ff;
+        }
+
+        .search-box input::placeholder {
+            color: #666;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0,212,255,0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .event-item {
+            font-size: 12px;
+            color: #666;
+            padding: 8px 15px;
+            margin: 5px 0;
+            background: rgba(255,255,255,0.02);
+            border-radius: 6px;
+            border-left: 2px solid #444;
+        }
+
+        .event-item.task_started {
+            border-left-color: #00d4ff;
+        }
+
+        .event-item.agent_reasoning {
+            border-left-color: #f5576c;
+        }
+
+        .event-item.token_count {
+            border-left-color: #38ef7d;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .stats {
+                gap: 15px;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Codex 对话记录查看器</h1>
+            <div class="meta" id="sessionMeta">加载 JSONL 文件查看对话</div>
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat">
+                    <div class="stat-value" id="userCount">0</div>
+                    <div class="stat-label">用户消息</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="assistantCount">0</div>
+                    <div class="stat-label">助手回复</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="totalTokens">0</div>
+                    <div class="stat-label">Token 数</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="file-upload" id="fileUpload">
+            <label>
+                <input type="file" id="fileInput" accept=".jsonl">
+                <div class="icon">📁</div>
+                <p>点击或拖拽 JSONL 文件到此处</p>
+            </label>
+        </div>
+
+        <div class="conversation" id="conversation">
+            <div class="nav-buttons">
+                <button class="nav-btn" id="backBtn">← 返回</button>
+                <button class="nav-btn" id="exportMarkdownBtn">⬇️ 导出 Markdown</button>
+                <button class="nav-btn" id="exportHtmlBtn">⬇️ 导出单文件 HTML</button>
+                <button class="nav-btn" id="scrollToTop">↑ 顶部</button>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="user">用户</button>
+                <button class="filter-btn" data-filter="assistant">助手</button>
+                <button class="filter-btn" data-filter="developer">开发者</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索对话内容...">
+                </div>
+            </div>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        let allMessages = [];
+        let sessionMeta = null;
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        const fileInput = document.getElementById('fileInput');
+        const fileUpload = document.getElementById('fileUpload');
+        const conversation = document.getElementById('conversation');
+        const messagesContainer = document.getElementById('messages');
+        const sessionMetaEl = document.getElementById('sessionMeta');
+        const statsEl = document.getElementById('stats');
+        const searchInput = document.getElementById('searchInput');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        // 文件上传处理
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadFile(file);
+            }
+        });
+
+        // 拖拽上传
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.style.borderColor = '#00d4ff';
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.style.borderColor = 'rgba(255,255,255,0.2)';
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.style.borderColor = 'rgba(255,255,255,0.2)';
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.jsonl')) {
+                loadFile(file);
+            }
+        });
+
+        // 返回按钮
+        document.getElementById('backBtn').addEventListener('click', () => {
+            conversation.classList.remove('active');
+            fileUpload.style.display = 'block';
+            statsEl.style.display = 'none';
+        });
+
+        // 滚动到顶部
+        document.getElementById('scrollToTop').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        // 过滤器
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                filterBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                renderMessages();
+            });
+        });
+
+        // 搜索
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderMessages();
+        });
+
+        async function loadFile(file) {
+            fileUpload.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在加载...</p></div>';
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                parseJSONL(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        function parseJSONL(content) {
+            const lines = content.trim().split('\n');
+            allMessages = [];
+            let userCount = 0;
+            let assistantCount = 0;
+            let totalTokens = 0;
+
+            lines.forEach((line, index) => {
+                try {
+                    const data = JSON.parse(line);
+                    const type = data.type;
+                    const payload = data.payload || {};
+                    const timestamp = data.timestamp;
+
+                    if (type === 'session_meta') {
+                        sessionMeta = payload;
+                    } else if (type === 'response_item') {
+                        const role = payload.role;
+                        const content = payload.content || [];
+
+                        if (content.length > 0) {
+                            const contentItem = content[0];
+                            const contentType = contentItem.type;
+                            let text = '';
+
+                            if (contentType === 'input_text') {
+                                text = contentItem.text || '';
+                            } else if (contentType === 'output_text') {
+                                text = contentItem.text || '';
+                            }
+
+                            // 过滤掉系统消息
+                            if (role === 'developer' && text.startsWith('<permissions instructions>')) {
+                                return;
+                            }
+                            if (role === 'developer' && text.startsWith('<app-context>')) {
+                                return;
+                            }
+                            if (role === 'user' && text.startsWith('<environment_context>')) {
+                                return;
+                            }
+                            if (role === 'user' && text.startsWith('# AGENTS.md instructions')) {
+                                return;
+                            }
+                            if (role === 'developer' && text.startsWith('<collaboration_mode>')) {
+                                return;
+                            }
+
+                            // 检查是否是有效的用户消息
+                            const isUserMessage = text.includes('╭') && text.includes('Plan to implement');
+                            const isRealUserMessage = role === 'user' && !text.startsWith('<') && !text.startsWith('# AGENTS') && text.length > 0;
+
+                            // 收集有效消息
+                            if (role === 'user' && isRealUserMessage) {
+                                allMessages.push({
+                                    role: 'user',
+                                    content: text,
+                                    timestamp,
+                                    type: 'message'
+                                });
+                                userCount++;
+                            } else if (role === 'assistant' && text.length > 0) {
+                                allMessages.push({
+                                    role: 'assistant',
+                                    content: text,
+                                    timestamp,
+                                    type: 'message'
+                                });
+                                assistantCount++;
+                            } else if (role === 'developer' && text.length > 0 && !text.startsWith('<')) {
+                                // 开发者消息（如果有的话）
+                                allMessages.push({
+                                    role: 'developer',
+                                    content: text,
+                                    timestamp,
+                                    type: 'message'
+                                });
+                            }
+                        }
+                    } else if (type === 'event_msg') {
+                        const eventType = payload.type;
+                        if (eventType === 'token_count') {
+                            const tokens = payload.input_tokens || 0;
+                            totalTokens += tokens;
+                        }
+                    }
+                } catch (err) {
+                    console.error('Parse error at line', index, err);
+                }
+            });
+
+            // 更新统计
+            if (sessionMeta) {
+                const date = new Date(sessionMeta.timestamp);
+                sessionMetaEl.textContent = `会话: ${sessionMeta.id?.slice(0, 8) || 'N/A'} | ${date.toLocaleString('zh-CN')}`;
+            }
+
+            document.getElementById('userCount').textContent = userCount;
+            document.getElementById('assistantCount').textContent = assistantCount;
+            document.getElementById('totalTokens').textContent = totalTokens > 0 ? totalTokens.toLocaleString() : 'N/A';
+
+            statsEl.style.display = 'flex';
+            fileUpload.style.display = 'none';
+            conversation.classList.add('active');
+
+            renderMessages();
+        }
+
+        function renderMessages() {
+            let filtered = allMessages;
+
+            // 应用过滤器
+            if (currentFilter !== 'all') {
+                filtered = filtered.filter(m => m.role === currentFilter);
+            }
+
+            // 应用搜索
+            if (searchQuery) {
+                filtered = filtered.filter(m =>
+                    m.content.toLowerCase().includes(searchQuery)
+                );
+            }
+
+            // 渲染消息
+            messagesContainer.innerHTML = filtered.map((msg, index) => {
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('zh-CN') : '';
+                const contentHtml = formatContent(msg.content);
+                const needsCollapse = msg.content.length > 2000;
+
+                return `
+                    <div class="message ${msg.role}" data-index="${index}">
+                        <div class="message-header">
+                            <span class="message-role ${msg.role}">${getRoleLabel(msg.role)}</span>
+                            ${time ? `<span class="message-time">${time}</span>` : ''}
+                        </div>
+                        <div class="message-content ${needsCollapse ? 'collapsed' : ''}">
+                            ${contentHtml}
+                        </div>
+                        ${needsCollapse ? `<button class="expand-btn" onclick="expandMessage(this)">展开全文</button>` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getRoleLabel(role) {
+            const labels = {
+                user: '用户',
+                assistant: '助手',
+                developer: '开发者'
+            };
+            return labels[role] || role;
+        }
+
+        function formatContent(content) {
+            // 处理特殊的用户输入格式
+            if (content.includes('╭') && content.includes('Plan to implement')) {
+                // 提取 Plan to implement 部分
+                const lines = content.split('\n');
+                const planLines = [];
+                let inPlan = false;
+
+                for (const line of lines) {
+                    if (line.includes('Plan to implement')) {
+                        inPlan = true;
+                    }
+                    if (inPlan) {
+                        planLines.push(line);
+                    }
+                }
+
+                if (planLines.length > 0) {
+                    content = planLines.join('\n');
+                }
+            }
+
+            // 清理特殊字符
+            content = content
+                .replace(/╭/g, '┌')
+                .replace(/╮/g, '┐')
+                .replace(/╰/g, '└')
+                .replace(/╯/g, '┘')
+                .replace(/│/g, '│')
+                .replace(/─/g, '─');
+
+            // 使用 marked 渲染 markdown
+            try {
+                return marked.parse(content);
+            } catch {
+                return escapeHtml(content);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function expandMessage(btn) {
+            const content = btn.previousElementSibling;
+            content.classList.remove('collapsed');
+            btn.style.display = 'none';
+        }
+
+        // 暴露到全局
+        window.expandMessage = expandMessage;
+
+        // 导出 Markdown 功能
+        document.getElementById('exportMarkdownBtn').addEventListener('click', () => {
+            if (allMessages.length === 0) return;
+
+            let mdContent = `# Codex 对话记录\n\n`;
+            if (sessionMeta) {
+                const date = new Date(sessionMeta.timestamp).toLocaleString('zh-CN');
+                mdContent += `**时间**: ${date}\n**会话 ID**: ${sessionMeta.id}\n`;
+                if (sessionMeta.model_provider) mdContent += `**模型**: ${sessionMeta.model_provider}\n`;
+                if (sessionMeta.source) mdContent += `**来源**: ${sessionMeta.source}\n`;
+                mdContent += `\n---\n\n`;
+            }
+
+            allMessages.forEach(msg => {
+                const role = msg.role === 'user' ? '用户 (User)' :
+                            msg.role === 'assistant' ? '助手 (Assistant)' :
+                            '开发者 (Developer)';
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('zh-CN') : '';
+
+                mdContent += `### ${role} ${time ? `(${time})` : ''}\n\n`;
+
+                // 处理特殊的折叠和缩进
+                let content = msg.content;
+                mdContent += `${content}\n\n---\n\n`;
+            });
+
+            const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `codex-chat-${sessionMeta?.id?.slice(0, 8) || 'export'}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // 导出 HTML 功能
+        document.getElementById('exportHtmlBtn').addEventListener('click', () => {
+            if (allMessages.length === 0) return;
+
+            // 获取当前的CSS样式
+            const styleContent = document.querySelector('style').innerHTML;
+
+            // 构建HTML内容
+            let htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Codex 对话记录 - ${sessionMeta?.id?.slice(0, 8) || 'export'}</title>
+    <style>${styleContent}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Codex 对话记录</h1>
+            <div class="meta">`;
+
+            if (sessionMeta) {
+                const date = new Date(sessionMeta.timestamp).toLocaleString('zh-CN');
+                htmlContent += `会话: ${sessionMeta.id?.slice(0, 8) || 'N/A'} | ${date}`;
+            }
+
+            htmlContent += `</div>
+            <div class="stats">
+                <div class="stat">
+                    <div class="stat-value">${document.getElementById('userCount').textContent}</div>
+                    <div class="stat-label">用户消息</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${document.getElementById('assistantCount').textContent}</div>
+                    <div class="stat-label">助手回复</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${document.getElementById('totalTokens').textContent}</div>
+                    <div class="stat-label">Token 数</div>
+                </div>
+            </div>
+        </div>
+        <div class="conversation active">
+            <div id="messages">`;
+
+            // 添加所有消息
+            allMessages.forEach(msg => {
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString('zh-CN') : '';
+                const contentHtml = formatContent(msg.content);
+
+                htmlContent += `
+                <div class="message ${msg.role}">
+                    <div class="message-header">
+                        <span class="message-role ${msg.role}">${getRoleLabel(msg.role)}</span>
+                        ${time ? `<span class="message-time">${time}</span>` : ''}
+                    </div>
+                    <div class="message-content">
+                        ${contentHtml}
+                    </div>
+                </div>`;
+            });
+
+            htmlContent += `
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `codex-chat-${sessionMeta?.id?.slice(0, 8) || 'export'}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // 快捷键支持
+        document.addEventListener('keydown', (e) => {
+            // Cmd/Ctrl + F 聚焦搜索框
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+                if (conversation.classList.contains('active')) {
+                    e.preventDefault();
+                    searchInput.focus();
+                }
+            }
+            // Esc 清空搜索并取消聚焦
+            if (e.key === 'Escape') {
+                if (document.activeElement === searchInput) {
+                    searchInput.value = '';
+                    searchQuery = '';
+                    searchInput.blur();
+                    renderMessages();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
