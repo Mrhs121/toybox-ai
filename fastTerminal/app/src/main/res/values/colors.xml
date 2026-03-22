@@ -1,0 +1,8 @@
+<resources>
+    <color name="surface_background">#F4F1EA</color>
+    <color name="terminal_background">#11161C</color>
+    <color name="card_stroke">#DED6C8</color>
+    <color name="text_primary">#1E2933</color>
+    <color name="text_secondary">#66737F</color>
+    <color name="brand">#0E766E</color>
+</resources>
