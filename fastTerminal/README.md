@@ -52,6 +52,12 @@ app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Prebuilt APK
+
+If you just want to try the app, use the bundled APK in this directory:
+
+- `fastTerminal-debug.apk`
+
 ## Notes
 
 - Current authentication is password-only.
