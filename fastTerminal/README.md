@@ -1,6 +1,6 @@
-# fastTerminal
+# FastTerminal
 
-`fastTerminal` is a lightweight Android SSH terminal app focused on external keyboard and mouse workflows.
+`FastTerminal` is a lightweight Android SSH terminal app focused on external keyboard and mouse workflows.
 
 ## Features
 

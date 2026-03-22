@@ -23,6 +23,8 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.androidterminal.databinding.ActivityMainBinding;
 import com.example.androidterminal.ssh.SshConnectionConfig;
+import com.example.androidterminal.ssh.SshConnectionService;
+import com.example.androidterminal.ssh.SshSessionRepository;
 import com.example.androidterminal.ssh.SshTerminalSession;
 import com.example.androidterminal.terminalview.TerminalView;
 import com.example.androidterminal.terminalview.TerminalViewClient;
@@ -63,7 +65,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     @Override
     protected void onDestroy() {
         if (sshTerminalSession != null) {
-            sshTerminalSession.disconnect();
+            if (isFinishing()) {
+                SshSessionRepository.disconnectAndClear(sshTerminalSession, "Disconnected");
+            } else {
+                SshSessionRepository.detachUi(sshTerminalSession);
+            }
         }
         super.onDestroy();
     }
@@ -169,7 +175,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             FrameLayout.LayoutParams.MATCH_PARENT
         );
         binding.terminalContainer.addView(terminalView, layoutParams);
-        resetSession();
+        attachCurrentSession();
     }
 
     private void bindActions() {
@@ -281,11 +287,26 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     }
 
     private void resetSession() {
-        if (sshTerminalSession != null) {
-            sshTerminalSession.disconnect("Disconnected");
-        }
-        sshTerminalSession = new SshTerminalSession(this, this);
+        sshTerminalSession = SshSessionRepository.replace(this, this);
         terminalView.attachSession(sshTerminalSession);
+        syncUiWithSession();
+    }
+
+    private void attachCurrentSession() {
+        sshTerminalSession = SshSessionRepository.getOrCreate(this, this);
+        terminalView.attachSession(sshTerminalSession);
+        syncUiWithSession();
+    }
+
+    private void syncUiWithSession() {
+        if (sshTerminalSession != null && sshTerminalSession.isConnected()) {
+            binding.statusText.setText(R.string.status_connected);
+            setConnectionPanelExpanded(false);
+            SshConnectionService.start(this);
+        } else {
+            binding.statusText.setText(R.string.status_idle);
+            SshConnectionService.stop(this);
+        }
     }
 
     private void persistConnectionDraft(String host, String port, String username) {
@@ -351,12 +372,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     public void onConnected() {
         binding.statusText.setText(R.string.status_connected);
         setConnectionPanelExpanded(false);
+        SshConnectionService.start(this);
         terminalView.post(terminalView::requestFocus);
     }
 
     @Override
     public void onDisconnected(String message) {
         binding.statusText.setText(message);
+        SshConnectionService.stop(this);
     }
 
     @Override

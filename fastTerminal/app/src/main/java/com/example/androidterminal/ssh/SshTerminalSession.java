@@ -47,8 +47,7 @@ public final class SshTerminalSession extends TerminalOutput {
     private static final int DEFAULT_ROWS = 24;
     private static final int TRANSCRIPT_ROWS = 10_000;
 
-    private final TerminalSessionClient terminalSessionClient;
-    private final Listener listener;
+    private final TerminalSessionClientProxy terminalSessionClientProxy = new TerminalSessionClientProxy();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final ExecutorService connectionExecutor = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r, "ssh-terminal-connect");
@@ -69,6 +68,7 @@ public final class SshTerminalSession extends TerminalOutput {
     private volatile InputStream remoteInput;
     private volatile OutputStream remoteOutput;
     private volatile boolean disconnectNotified;
+    private volatile Listener listener;
 
     private TerminalEmulator emulator;
     private Thread readerThread;
@@ -76,10 +76,19 @@ public final class SshTerminalSession extends TerminalOutput {
     private int rows = DEFAULT_ROWS;
 
     public SshTerminalSession(@NonNull TerminalSessionClient terminalSessionClient, @NonNull Listener listener) {
-        this.terminalSessionClient = terminalSessionClient;
-        this.listener = listener;
-        emulator = new TerminalEmulator(this, DEFAULT_COLUMNS, DEFAULT_ROWS, TRANSCRIPT_ROWS, terminalSessionClient);
+        attachUi(terminalSessionClient, listener);
+        emulator = new TerminalEmulator(this, DEFAULT_COLUMNS, DEFAULT_ROWS, TRANSCRIPT_ROWS, terminalSessionClientProxy);
         appendLocalMessage("Ready. Fill in SSH info above and connect.\r\n");
+    }
+
+    public void attachUi(@NonNull TerminalSessionClient terminalSessionClient, @NonNull Listener listener) {
+        terminalSessionClientProxy.setDelegate(terminalSessionClient);
+        this.listener = listener;
+    }
+
+    public void detachUi() {
+        listener = null;
+        terminalSessionClientProxy.setDelegate(null);
     }
 
     public synchronized void updateSize(int columns, int rows) {
@@ -159,7 +168,12 @@ public final class SshTerminalSession extends TerminalOutput {
 
             Log.d(SSH_LOG_TAG, "SSH shell connected: outputStream=" + (outputStream != null) + " inputStream=" + (inputStream != null));
 
-            mainHandler.post(listener::onConnected);
+            mainHandler.post(() -> {
+                Listener currentListener = listener;
+                if (currentListener != null) {
+                    currentListener.onConnected();
+                }
+            });
             startReaderLoop(inputStream);
         } catch (Exception e) {
             Log.e(SSH_LOG_TAG, "SSH connect failed", e);
@@ -181,7 +195,10 @@ public final class SshTerminalSession extends TerminalOutput {
                         TerminalEmulator terminalEmulator = emulator;
                         if (terminalEmulator != null) {
                             terminalEmulator.append(chunk, chunk.length);
-                            listener.onScreenUpdated();
+                            Listener currentListener = listener;
+                            if (currentListener != null) {
+                                currentListener.onScreenUpdated();
+                            }
                         }
                     });
                 }
@@ -262,7 +279,10 @@ public final class SshTerminalSession extends TerminalOutput {
             if (terminalEmulator != null) {
                 byte[] data = message.getBytes(StandardCharsets.UTF_8);
                 terminalEmulator.append(data, data.length);
-                listener.onScreenUpdated();
+                Listener currentListener = listener;
+                if (currentListener != null) {
+                    currentListener.onScreenUpdated();
+                }
             }
         });
     }
@@ -273,7 +293,12 @@ public final class SshTerminalSession extends TerminalOutput {
         }
         disconnectNotified = true;
         Log.d(SSH_LOG_TAG, "notifyDisconnected message=" + message);
-        mainHandler.post(() -> listener.onDisconnected(message));
+        mainHandler.post(() -> {
+            Listener currentListener = listener;
+            if (currentListener != null) {
+                currentListener.onDisconnected(message);
+            }
+        });
     }
 
     private void closeRemoteState() {
@@ -380,17 +405,32 @@ public final class SshTerminalSession extends TerminalOutput {
 
     @Override
     public void titleChanged(String oldTitle, String newTitle) {
-        mainHandler.post(() -> listener.onSessionTitleChanged(newTitle));
+        mainHandler.post(() -> {
+            Listener currentListener = listener;
+            if (currentListener != null) {
+                currentListener.onSessionTitleChanged(newTitle);
+            }
+        });
     }
 
     @Override
     public void onCopyTextToClipboard(String text) {
-        mainHandler.post(() -> listener.copyToClipboard(text));
+        mainHandler.post(() -> {
+            Listener currentListener = listener;
+            if (currentListener != null) {
+                currentListener.copyToClipboard(text);
+            }
+        });
     }
 
     @Override
     public void onPasteTextFromClipboard() {
-        mainHandler.post(listener::pasteFromClipboard);
+        mainHandler.post(() -> {
+            Listener currentListener = listener;
+            if (currentListener != null) {
+                currentListener.pasteFromClipboard();
+            }
+        });
     }
 
     @Override
@@ -400,6 +440,133 @@ public final class SshTerminalSession extends TerminalOutput {
 
     @Override
     public void onColorsChanged() {
-        mainHandler.post(listener::onScreenUpdated);
+        mainHandler.post(() -> {
+            Listener currentListener = listener;
+            if (currentListener != null) {
+                currentListener.onScreenUpdated();
+            }
+        });
+    }
+
+    private static final class TerminalSessionClientProxy implements TerminalSessionClient {
+
+        private volatile TerminalSessionClient delegate;
+
+        void setDelegate(TerminalSessionClient delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void onTextChanged(com.termux.terminal.TerminalSession session) {
+            if (delegate != null) {
+                delegate.onTextChanged(session);
+            }
+        }
+
+        @Override
+        public void onTitleChanged(com.termux.terminal.TerminalSession session) {
+            if (delegate != null) {
+                delegate.onTitleChanged(session);
+            }
+        }
+
+        @Override
+        public void onSessionFinished(com.termux.terminal.TerminalSession session) {
+            if (delegate != null) {
+                delegate.onSessionFinished(session);
+            }
+        }
+
+        @Override
+        public void onCopyTextToClipboard(com.termux.terminal.TerminalSession session, String text) {
+            if (delegate != null) {
+                delegate.onCopyTextToClipboard(session, text);
+            }
+        }
+
+        @Override
+        public void onPasteTextFromClipboard(com.termux.terminal.TerminalSession session) {
+            if (delegate != null) {
+                delegate.onPasteTextFromClipboard(session);
+            }
+        }
+
+        @Override
+        public void onBell(com.termux.terminal.TerminalSession session) {
+            if (delegate != null) {
+                delegate.onBell(session);
+            }
+        }
+
+        @Override
+        public void onColorsChanged(com.termux.terminal.TerminalSession session) {
+            if (delegate != null) {
+                delegate.onColorsChanged(session);
+            }
+        }
+
+        @Override
+        public void onTerminalCursorStateChange(boolean state) {
+            if (delegate != null) {
+                delegate.onTerminalCursorStateChange(state);
+            }
+        }
+
+        @Override
+        public Integer getTerminalCursorStyle() {
+            if (delegate != null) {
+                return delegate.getTerminalCursorStyle();
+            }
+            return TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK;
+        }
+
+        @Override
+        public void logError(String tag, String message) {
+            if (delegate != null) {
+                delegate.logError(tag, message);
+            }
+        }
+
+        @Override
+        public void logWarn(String tag, String message) {
+            if (delegate != null) {
+                delegate.logWarn(tag, message);
+            }
+        }
+
+        @Override
+        public void logInfo(String tag, String message) {
+            if (delegate != null) {
+                delegate.logInfo(tag, message);
+            }
+        }
+
+        @Override
+        public void logDebug(String tag, String message) {
+            if (delegate != null) {
+                delegate.logDebug(tag, message);
+            }
+        }
+
+        @Override
+        public void logVerbose(String tag, String message) {
+            if (delegate != null) {
+                delegate.logVerbose(tag, message);
+            }
+        }
+
+        @Override
+        public void logStackTraceWithMessage(String tag, String message, Exception e) {
+            if (delegate != null) {
+                delegate.logStackTraceWithMessage(tag, message, e);
+            }
+        }
+
+        @Override
+        public void logStackTrace(String tag, Exception e) {
+            if (delegate != null) {
+                delegate.logStackTrace(tag, e);
+            }
+        }
     }
 }

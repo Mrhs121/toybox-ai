@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Android Terminal</string>
+    <string name="app_name">FastTerminal</string>
     <string name="connection_title">SSH Connection</string>
     <string name="host_hint">Host</string>
     <string name="port_hint">Port</string>
@@ -21,4 +21,8 @@
     <string name="invalid_port">Port must be a valid number.</string>
     <string name="default_terminal_banner">Ready. Fill in SSH info above and connect.</string>
     <string name="show_connection_panel">SSH</string>
+    <string name="ssh_service_title">FastTerminal SSH session</string>
+    <string name="ssh_service_text">SSH connection is running in the background.</string>
+    <string name="ssh_service_channel_name">SSH session</string>
+    <string name="ssh_service_channel_description">Keeps the SSH terminal alive while the app is in the background.</string>
 </resources>
