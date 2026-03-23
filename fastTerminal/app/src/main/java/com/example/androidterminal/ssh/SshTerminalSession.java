@@ -2,6 +2,7 @@ package com.example.androidterminal.ssh;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -24,19 +25,20 @@ import java.security.Security;
 import java.util.Collections;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.UUID;
 
 public final class SshTerminalSession extends TerminalOutput {
 
     private static final String SSH_LOG_TAG = "AndroidTerminalSSH";
 
     public interface Listener {
-        void onScreenUpdated();
+        void onScreenUpdated(@NonNull SshTerminalSession session);
 
-        void onSessionTitleChanged(String title);
+        void onSessionTitleChanged(@NonNull SshTerminalSession session, String title);
 
-        void onConnected();
+        void onConnected(@NonNull SshTerminalSession session);
 
-        void onDisconnected(String message);
+        void onDisconnected(@NonNull SshTerminalSession session, String message);
 
         void copyToClipboard(String text);
 
@@ -59,6 +61,7 @@ public final class SshTerminalSession extends TerminalOutput {
         thread.setDaemon(true);
         return thread;
     });
+    private final String sessionId = UUID.randomUUID().toString();
     private final Object ioLock = new Object();
     private final byte[] utf8InputBuffer = new byte[5];
 
@@ -69,6 +72,7 @@ public final class SshTerminalSession extends TerminalOutput {
     private volatile OutputStream remoteOutput;
     private volatile boolean disconnectNotified;
     private volatile Listener listener;
+    private volatile String displayTitle = "Tab";
 
     private TerminalEmulator emulator;
     private Thread readerThread;
@@ -86,9 +90,19 @@ public final class SshTerminalSession extends TerminalOutput {
         this.listener = listener;
     }
 
+    @NonNull
+    public String getSessionId() {
+        return sessionId;
+    }
+
     public void detachUi() {
         listener = null;
         terminalSessionClientProxy.setDelegate(null);
+    }
+
+    @NonNull
+    public String getDisplayTitle() {
+        return displayTitle;
     }
 
     public synchronized void updateSize(int columns, int rows) {
@@ -116,6 +130,7 @@ public final class SshTerminalSession extends TerminalOutput {
 
     public void connect(@NonNull SshConnectionConfig config) {
         Log.d(SSH_LOG_TAG, "connect() host=" + config.getHost() + " port=" + config.getPort() + " user=" + config.getUsername());
+        displayTitle = config.getUsername() + "@" + config.getHost();
         disconnect("Reconnecting");
         disconnectNotified = false;
         connectionExecutor.execute(() -> connectInternal(config));
@@ -171,7 +186,7 @@ public final class SshTerminalSession extends TerminalOutput {
             mainHandler.post(() -> {
                 Listener currentListener = listener;
                 if (currentListener != null) {
-                    currentListener.onConnected();
+                    currentListener.onConnected(this);
                 }
             });
             startReaderLoop(inputStream);
@@ -197,7 +212,7 @@ public final class SshTerminalSession extends TerminalOutput {
                             terminalEmulator.append(chunk, chunk.length);
                             Listener currentListener = listener;
                             if (currentListener != null) {
-                                currentListener.onScreenUpdated();
+                                currentListener.onScreenUpdated(this);
                             }
                         }
                     });
@@ -281,7 +296,7 @@ public final class SshTerminalSession extends TerminalOutput {
                 terminalEmulator.append(data, data.length);
                 Listener currentListener = listener;
                 if (currentListener != null) {
-                    currentListener.onScreenUpdated();
+                    currentListener.onScreenUpdated(this);
                 }
             }
         });
@@ -296,7 +311,7 @@ public final class SshTerminalSession extends TerminalOutput {
         mainHandler.post(() -> {
             Listener currentListener = listener;
             if (currentListener != null) {
-                currentListener.onDisconnected(message);
+                currentListener.onDisconnected(this, message);
             }
         });
     }
@@ -408,7 +423,7 @@ public final class SshTerminalSession extends TerminalOutput {
         mainHandler.post(() -> {
             Listener currentListener = listener;
             if (currentListener != null) {
-                currentListener.onSessionTitleChanged(newTitle);
+                currentListener.onSessionTitleChanged(this, displayTitle);
             }
         });
     }
@@ -443,7 +458,7 @@ public final class SshTerminalSession extends TerminalOutput {
         mainHandler.post(() -> {
             Listener currentListener = listener;
             if (currentListener != null) {
-                currentListener.onScreenUpdated();
+                currentListener.onScreenUpdated(this);
             }
         });
     }

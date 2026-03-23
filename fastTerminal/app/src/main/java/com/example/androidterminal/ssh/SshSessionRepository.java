@@ -1,66 +1,84 @@
 package com.example.androidterminal.ssh;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.termux.terminal.TerminalSessionClient;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public final class SshSessionRepository {
 
     private static final Object LOCK = new Object();
-    private static SshTerminalSession currentSession;
+    private static final LinkedHashMap<String, SshTerminalSession> SESSIONS = new LinkedHashMap<>();
 
     private SshSessionRepository() {
     }
 
     @NonNull
-    public static SshTerminalSession getOrCreate(
+    public static SshTerminalSession create(
         @NonNull TerminalSessionClient terminalSessionClient,
         @NonNull SshTerminalSession.Listener listener
     ) {
         synchronized (LOCK) {
-            if (currentSession == null) {
-                currentSession = new SshTerminalSession(terminalSessionClient, listener);
-            } else {
-                currentSession.attachUi(terminalSessionClient, listener);
+            SshTerminalSession session = new SshTerminalSession(terminalSessionClient, listener);
+            SESSIONS.put(session.getSessionId(), session);
+            return session;
+        }
+    }
+
+    public static void attachUi(
+        @NonNull SshTerminalSession session,
+        @NonNull TerminalSessionClient terminalSessionClient,
+        @NonNull SshTerminalSession.Listener listener
+    ) {
+        synchronized (LOCK) {
+            if (SESSIONS.containsKey(session.getSessionId())) {
+                session.attachUi(terminalSessionClient, listener);
             }
-            return currentSession;
+        }
+    }
+
+    public static void detachUi(@NonNull SshTerminalSession session) {
+        synchronized (LOCK) {
+            if (SESSIONS.containsKey(session.getSessionId())) {
+                session.detachUi();
+            }
+        }
+    }
+
+    public static void disconnectAndRemove(@NonNull SshTerminalSession session, @NonNull String message) {
+        synchronized (LOCK) {
+            if (SESSIONS.remove(session.getSessionId()) != null) {
+                session.disconnect(message);
+            }
+        }
+    }
+
+    @Nullable
+    public static SshTerminalSession findById(@Nullable String sessionId) {
+        synchronized (LOCK) {
+            return sessionId == null ? null : SESSIONS.get(sessionId);
         }
     }
 
     @NonNull
-    public static SshTerminalSession replace(
-        @NonNull TerminalSessionClient terminalSessionClient,
-        @NonNull SshTerminalSession.Listener listener
-    ) {
+    public static List<SshTerminalSession> listSessions() {
         synchronized (LOCK) {
-            if (currentSession != null) {
-                currentSession.disconnect("Reconnecting");
-            }
-            currentSession = new SshTerminalSession(terminalSessionClient, listener);
-            return currentSession;
+            return new ArrayList<>(SESSIONS.values());
         }
     }
 
-    public static void detachUi(SshTerminalSession session) {
+    public static boolean hasConnectedSessions() {
         synchronized (LOCK) {
-            if (currentSession == session) {
-                currentSession.detachUi();
+            for (SshTerminalSession session : SESSIONS.values()) {
+                if (session.isConnected()) {
+                    return true;
+                }
             }
-        }
-    }
-
-    public static void disconnectAndClear(SshTerminalSession session, @NonNull String message) {
-        synchronized (LOCK) {
-            if (currentSession == session) {
-                currentSession.disconnect(message);
-                currentSession = null;
-            }
-        }
-    }
-
-    public static SshTerminalSession peek() {
-        synchronized (LOCK) {
-            return currentSession;
+            return false;
         }
     }
 }

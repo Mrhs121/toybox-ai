@@ -41,6 +41,10 @@
     <string name="save_before_connect_title">Save connection first?</string>
     <string name="save_before_connect_message">Do you want to save this SSH connection before connecting?</string>
     <string name="cancel_action">Cancel</string>
+    <string name="new_tab_action">+</string>
+    <string name="new_tab_description">New tab</string>
+    <string name="close_tab_description">Close tab</string>
+    <string name="tab_default_title">Tab</string>
     <string name="ssh_service_title">FastTerminal SSH session</string>
     <string name="ssh_service_text">SSH connection is running in the background.</string>
     <string name="ssh_service_channel_name">SSH session</string>

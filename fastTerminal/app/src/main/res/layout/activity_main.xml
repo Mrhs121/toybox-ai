@@ -61,6 +61,48 @@
             </LinearLayout>
         </LinearLayout>
 
+        <LinearLayout
+            android:id="@+id/tab_bar"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:background="@color/tab_bar_surface"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/top_bar">
+
+            <HorizontalScrollView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:fillViewport="false"
+                android:overScrollMode="never"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/tabs_container"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/new_tab_button"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:contentDescription="@string/new_tab_description"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:minWidth="0dp"
+                android:text="@string/new_tab_action"
+                android:textColor="@color/text_muted_on_dark" />
+        </LinearLayout>
+
         <FrameLayout
             android:id="@+id/terminal_container"
             android:layout_width="0dp"
@@ -69,7 +111,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/top_bar" />
+            app:layout_constraintTop_toBottomOf="@id/tab_bar" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <androidx.core.widget.NestedScrollView

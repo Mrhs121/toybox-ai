@@ -27,6 +27,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.core.content.ContextCompat;
+import androidx.core.widget.ImageViewCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
@@ -73,7 +74,9 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private SshTerminalSession sshTerminalSession;
     private float terminalScaleFactor = 1.0f;
     private final List<SavedConnection> savedConnections = new ArrayList<>();
+    private final List<String> tabSessionIds = new ArrayList<>();
     private String selectedConnectionId;
+    private String activeSessionId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,11 +95,12 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     @Override
     protected void onDestroy() {
-        if (sshTerminalSession != null) {
+        List<SshTerminalSession> sessions = SshSessionRepository.listSessions();
+        for (SshTerminalSession session : sessions) {
             if (isFinishing()) {
-                SshSessionRepository.disconnectAndClear(sshTerminalSession, "Disconnected");
+                SshSessionRepository.disconnectAndRemove(session, "Disconnected");
             } else {
-                SshSessionRepository.detachUi(sshTerminalSession);
+                SshSessionRepository.detachUi(session);
             }
         }
         super.onDestroy();
@@ -203,7 +207,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             FrameLayout.LayoutParams.MATCH_PARENT
         );
         binding.terminalContainer.addView(terminalView, layoutParams);
-        attachCurrentSession();
+        restoreOrCreateTabs();
     }
 
     private void bindActions() {
@@ -216,6 +220,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         });
         binding.showConnectionButton.setOnClickListener(v -> setConnectionPanelExpanded(true));
         binding.newConnectionButton.setOnClickListener(v -> showConnectionEditor(null));
+        binding.newTabButton.setOnClickListener(v -> createNewTab(true));
         binding.drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerClosed(@NonNull View drawerView) {
@@ -231,15 +236,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             toast(getString(R.string.saved_connections_empty));
             return;
         }
-
-        setConnectionPanelExpanded(false);
-        selectedConnectionId = savedConnection.id;
-        persistSelectedConnectionId();
-        renderSavedConnections();
-        binding.statusText.setText(R.string.status_connecting);
-        resetSession();
-        sshTerminalSession.connect(savedConnection.toConfig());
-        terminalView.requestFocus();
+        connect(savedConnection.toConfig(), savedConnection.id);
     }
 
     private void connect(SshConnectionConfig config, @Nullable String selectedId) {
@@ -247,10 +244,17 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         selectedConnectionId = selectedId;
         persistSelectedConnectionId();
         renderSavedConnections();
+        SshTerminalSession targetSession = getReusableSessionForConnect();
+        if (targetSession == null) {
+            targetSession = createNewTab(true);
+        } else {
+            switchToTab(targetSession.getSessionId());
+        }
         binding.statusText.setText(R.string.status_connecting);
-        resetSession();
-        sshTerminalSession.connect(config);
-        terminalView.requestFocus();
+        targetSession.connect(config);
+        if (terminalView != null) {
+            terminalView.requestFocus();
+        }
     }
 
     private void setConnectionPanelExpanded(boolean expanded) {
@@ -321,27 +325,127 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         binding.terminalContainer.setPointerIcon(pointerIcon);
     }
 
-    private void resetSession() {
-        sshTerminalSession = SshSessionRepository.replace(this, this);
-        terminalView.attachSession(sshTerminalSession);
-        syncUiWithSession();
-    }
+    private void restoreOrCreateTabs() {
+        tabSessionIds.clear();
+        for (SshTerminalSession session : SshSessionRepository.listSessions()) {
+            tabSessionIds.add(session.getSessionId());
+            SshSessionRepository.attachUi(session, this, this);
+        }
 
-    private void attachCurrentSession() {
-        sshTerminalSession = SshSessionRepository.getOrCreate(this, this);
-        terminalView.attachSession(sshTerminalSession);
-        syncUiWithSession();
-    }
-
-    private void syncUiWithSession() {
-        boolean connected = sshTerminalSession != null && sshTerminalSession.isConnected();
-        updateConnectionActions(connected);
-        if (connected) {
-            binding.statusText.setText(R.string.status_connected);
-            setConnectionPanelExpanded(false);
-            SshConnectionService.start(this);
+        if (tabSessionIds.isEmpty()) {
+            createNewTab(true);
         } else {
+            activeSessionId = tabSessionIds.get(0);
+            switchToTab(activeSessionId);
+            renderTabs();
+        }
+    }
+
+    @NonNull
+    private SshTerminalSession createNewTab(boolean switchToNewTab) {
+        SshTerminalSession session = SshSessionRepository.create(this, this);
+        tabSessionIds.add(session.getSessionId());
+        if (switchToNewTab) {
+            switchToTab(session.getSessionId());
+        } else {
+            renderTabs();
+        }
+        return session;
+    }
+
+    private void switchToTab(@Nullable String sessionId) {
+        SshTerminalSession session = SshSessionRepository.findById(sessionId);
+        if (session == null) {
+            return;
+        }
+
+        activeSessionId = sessionId;
+        sshTerminalSession = session;
+        SshSessionRepository.attachUi(session, this, this);
+        terminalView.attachSession(session);
+        syncUiWithActiveSession();
+        renderTabs();
+        terminalView.requestFocus();
+    }
+
+    @Nullable
+    private SshTerminalSession getReusableSessionForConnect() {
+        SshTerminalSession activeSession = getActiveSession();
+        if (activeSession == null) {
+            return null;
+        }
+        return activeSession.isConnected() ? null : activeSession;
+    }
+
+    @Nullable
+    private SshTerminalSession getActiveSession() {
+        return SshSessionRepository.findById(activeSessionId);
+    }
+
+    private void closeTab(@NonNull String sessionId) {
+        SshTerminalSession session = SshSessionRepository.findById(sessionId);
+        if (session == null) {
+            return;
+        }
+
+        SshSessionRepository.disconnectAndRemove(session, "Closed");
+        tabSessionIds.remove(sessionId);
+
+        if (tabSessionIds.isEmpty()) {
+            createNewTab(true);
+            return;
+        }
+
+        if (TextUtils.equals(activeSessionId, sessionId)) {
+            switchToTab(tabSessionIds.get(Math.max(0, tabSessionIds.size() - 1)));
+        } else {
+            renderTabs();
+            syncUiWithActiveSession();
+        }
+    }
+
+    private void renderTabs() {
+        binding.tabsContainer.removeAllViews();
+        for (String sessionId : tabSessionIds) {
+            SshTerminalSession session = SshSessionRepository.findById(sessionId);
+            if (session == null) {
+                continue;
+            }
+
+            View tabView = getLayoutInflater().inflate(R.layout.item_terminal_tab, binding.tabsContainer, false);
+            android.widget.LinearLayout cardView = tabView.findViewById(R.id.terminal_tab_card);
+            android.widget.TextView titleView = tabView.findViewById(R.id.terminal_tab_title);
+            AppCompatImageButton closeButton = tabView.findViewById(R.id.close_tab_button);
+
+            boolean active = TextUtils.equals(activeSessionId, sessionId);
+            cardView.setBackgroundColor(ContextCompat.getColor(this, active ? R.color.tab_surface_active : R.color.tab_surface));
+            titleView.setTextColor(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.text_on_dark));
+            ImageViewCompat.setImageTintList(
+                closeButton,
+                android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.text_muted_on_dark))
+            );
+            titleView.setText(session.getDisplayTitle());
+
+            cardView.setOnClickListener(v -> switchToTab(sessionId));
+            closeButton.setOnClickListener(v -> closeTab(sessionId));
+            binding.tabsContainer.addView(tabView);
+        }
+    }
+
+    private void syncUiWithActiveSession() {
+        SshTerminalSession activeSession = getActiveSession();
+        boolean connected = activeSession != null && activeSession.isConnected();
+        updateConnectionActions(connected);
+        if (activeSession == null) {
             binding.statusText.setText(R.string.status_idle);
+            SshConnectionService.stop(this);
+            return;
+        }
+
+        binding.statusText.setText(connected ? activeSession.getDisplayTitle() : getString(R.string.status_idle));
+        if (connected) {
+            SshConnectionService.start(this);
+        } else if (!SshSessionRepository.hasConnectedSessions()) {
             SshConnectionService.stop(this);
         }
     }
@@ -594,7 +698,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             boolean selected = TextUtils.equals(savedConnection.id, selectedConnectionId);
             cardView.setStrokeColor(ContextCompat.getColor(this, selected ? R.color.saved_connection_selected_stroke : R.color.drawer_field_stroke));
             cardView.setCardBackgroundColor(ContextCompat.getColor(this, selected ? R.color.saved_connection_selected_surface : R.color.drawer_field_surface));
-            cardView.setStrokeWidth(dp(selected ? 2 : 1));
+            cardView.setStrokeWidth(dp(1));
             nameView.setText(savedConnection.getDisplayName());
             detailsView.setText(savedConnection.getDisplayDetails());
 
@@ -695,31 +799,42 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     }
 
     @Override
-    public void onScreenUpdated() {
-        terminalView.onScreenUpdated();
+    public void onScreenUpdated(@NonNull SshTerminalSession session) {
+        if (TextUtils.equals(activeSessionId, session.getSessionId())) {
+            terminalView.onScreenUpdated();
+        }
     }
 
     @Override
-    public void onSessionTitleChanged(String title) {
-        if (!TextUtils.isEmpty(title)) {
+    public void onSessionTitleChanged(@NonNull SshTerminalSession session, String title) {
+        renderTabs();
+        if (TextUtils.equals(activeSessionId, session.getSessionId()) && !TextUtils.isEmpty(title)) {
             binding.statusText.setText(title);
         }
     }
 
     @Override
-    public void onConnected() {
-        binding.statusText.setText(R.string.status_connected);
+    public void onConnected(@NonNull SshTerminalSession session) {
+        renderTabs();
+        if (TextUtils.equals(activeSessionId, session.getSessionId())) {
+            binding.statusText.setText(session.getDisplayTitle());
+            updateConnectionActions(true);
+            terminalView.post(terminalView::requestFocus);
+        }
         setConnectionPanelExpanded(false);
-        updateConnectionActions(true);
         SshConnectionService.start(this);
-        terminalView.post(terminalView::requestFocus);
     }
 
     @Override
-    public void onDisconnected(String message) {
-        binding.statusText.setText(message);
-        updateConnectionActions(false);
-        SshConnectionService.stop(this);
+    public void onDisconnected(@NonNull SshTerminalSession session, String message) {
+        renderTabs();
+        if (TextUtils.equals(activeSessionId, session.getSessionId())) {
+            binding.statusText.setText(message);
+            updateConnectionActions(false);
+        }
+        if (!SshSessionRepository.hasConnectedSessions()) {
+            SshConnectionService.stop(this);
+        }
     }
 
     @Override
