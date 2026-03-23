@@ -4,9 +4,12 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Gravity;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
@@ -19,7 +22,13 @@ import android.widget.Toast;
 import android.view.inputmethod.InputMethodManager;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatImageButton;
+import androidx.core.content.ContextCompat;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.example.androidterminal.databinding.ActivityMainBinding;
 import com.example.androidterminal.ssh.SshConnectionConfig;
@@ -28,26 +37,43 @@ import com.example.androidterminal.ssh.SshSessionRepository;
 import com.example.androidterminal.ssh.SshTerminalSession;
 import com.example.androidterminal.terminalview.TerminalView;
 import com.example.androidterminal.terminalview.TerminalViewClient;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.textfield.TextInputEditText;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 
 public final class MainActivity extends AppCompatActivity implements TerminalViewClient, TerminalSessionClient, SshTerminalSession.Listener {
 
     private static final String INPUT_LOG_TAG = "AndroidTerminalInput";
     private static final String PREFS = "ssh-terminal-prefs";
+    private static final String KEY_SAVED_CONNECTIONS = "saved_connections";
+    private static final String KEY_SELECTED_CONNECTION_ID = "selected_connection_id";
     private static final String KEY_HOST = "host";
     private static final String KEY_PORT = "port";
     private static final String KEY_USERNAME = "username";
-    private static final int DEFAULT_TERMINAL_TEXT_SIZE_SP = 15;
-    private static final int MIN_TERMINAL_TEXT_SIZE_SP = 11;
-    private static final int MAX_TERMINAL_TEXT_SIZE_SP = 28;
+    private static final String KEY_PASSWORD = "password";
+    private static final int DEFAULT_TERMINAL_TEXT_SIZE_SP = 30;
+    private static final int MIN_TERMINAL_TEXT_SIZE_SP = 12;
+    private static final int MAX_TERMINAL_TEXT_SIZE_SP = 60;
 
     private ActivityMainBinding binding;
     private SharedPreferences preferences;
     private TerminalView terminalView;
     private SshTerminalSession sshTerminalSession;
     private float terminalScaleFactor = 1.0f;
+    private final List<SavedConnection> savedConnections = new ArrayList<>();
+    private String selectedConnectionId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -56,10 +82,12 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         setContentView(binding.getRoot());
 
         preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
-        restoreConnectionDraft();
+        restoreSavedConnections();
         setupTerminal();
         bindActions();
-        binding.statusText.setText(R.string.status_idle);
+        if (savedConnections.isEmpty()) {
+            setConnectionPanelExpanded(true);
+        }
     }
 
     @Override
@@ -181,48 +209,55 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void bindActions() {
         binding.showConnectionButton.setFocusable(false);
         binding.showConnectionButton.setFocusableInTouchMode(false);
-        binding.connectButton.setOnClickListener(v -> connect());
-        binding.disconnectButton.setOnClickListener(v -> {
+        binding.drawerDisconnectButton.setOnClickListener(v -> {
             if (sshTerminalSession != null) {
                 sshTerminalSession.disconnect();
             }
         });
         binding.showConnectionButton.setOnClickListener(v -> setConnectionPanelExpanded(true));
+        binding.newConnectionButton.setOnClickListener(v -> showConnectionEditor(null));
+        binding.drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerClosed(@NonNull View drawerView) {
+                if (terminalView != null) {
+                    terminalView.post(terminalView::requestFocus);
+                }
+            }
+        });
     }
 
-    private void connect() {
-        String host = valueOf(binding.hostInput.getText());
-        String username = valueOf(binding.usernameInput.getText());
-        String password = valueOf(binding.passwordInput.getText());
-        String portValue = valueOf(binding.portInput.getText());
-
-        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
-            toast(getString(R.string.missing_connection_info));
+    private void connect(@Nullable SavedConnection savedConnection) {
+        if (savedConnection == null) {
+            toast(getString(R.string.saved_connections_empty));
             return;
         }
 
-        int port = 22;
-        if (!TextUtils.isEmpty(portValue)) {
-            try {
-                port = Integer.parseInt(portValue);
-            } catch (NumberFormatException e) {
-                toast(getString(R.string.invalid_port));
-                return;
-            }
-        }
-
-        persistConnectionDraft(host, String.valueOf(port), username);
+        setConnectionPanelExpanded(false);
+        selectedConnectionId = savedConnection.id;
+        persistSelectedConnectionId();
+        renderSavedConnections();
         binding.statusText.setText(R.string.status_connecting);
         resetSession();
-        sshTerminalSession.connect(new SshConnectionConfig(host, port, username, password));
+        sshTerminalSession.connect(savedConnection.toConfig());
+        terminalView.requestFocus();
+    }
+
+    private void connect(SshConnectionConfig config, @Nullable String selectedId) {
+        setConnectionPanelExpanded(false);
+        selectedConnectionId = selectedId;
+        persistSelectedConnectionId();
+        renderSavedConnections();
+        binding.statusText.setText(R.string.status_connecting);
+        resetSession();
+        sshTerminalSession.connect(config);
         terminalView.requestFocus();
     }
 
     private void setConnectionPanelExpanded(boolean expanded) {
-        binding.connectionCard.setVisibility(expanded ? View.VISIBLE : View.GONE);
-        binding.showConnectionButton.setVisibility(expanded ? View.GONE : View.VISIBLE);
-        if (!expanded && terminalView != null) {
-            terminalView.post(terminalView::requestFocus);
+        if (expanded) {
+            binding.drawerLayout.openDrawer(binding.connectionPanel);
+        } else {
+            binding.drawerLayout.closeDrawer(binding.connectionPanel);
         }
     }
 
@@ -231,7 +266,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             return false;
         }
 
-        if (binding.connectionCard.getVisibility() != View.VISIBLE) {
+        if (!binding.drawerLayout.isDrawerOpen(binding.connectionPanel)) {
             return true;
         }
 
@@ -299,7 +334,9 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     }
 
     private void syncUiWithSession() {
-        if (sshTerminalSession != null && sshTerminalSession.isConnected()) {
+        boolean connected = sshTerminalSession != null && sshTerminalSession.isConnected();
+        updateConnectionActions(connected);
+        if (connected) {
             binding.statusText.setText(R.string.status_connected);
             setConnectionPanelExpanded(false);
             SshConnectionService.start(this);
@@ -309,18 +346,319 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         }
     }
 
-    private void persistConnectionDraft(String host, String port, String username) {
+    private void updateConnectionActions(boolean connected) {
+        binding.drawerDisconnectButton.setEnabled(connected);
+    }
+
+    @Nullable
+    private SshConnectionConfig buildConnectionConfig(String host, String portValue, String username, String password) {
+        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+            toast(getString(R.string.missing_connection_info));
+            return null;
+        }
+
+        int port = 22;
+        if (!TextUtils.isEmpty(portValue)) {
+            try {
+                port = Integer.parseInt(portValue);
+            } catch (NumberFormatException e) {
+                toast(getString(R.string.invalid_port));
+                return null;
+            }
+        }
+
+        return new SshConnectionConfig(host, port, username, password);
+    }
+
+    private void showConnectionEditor(@Nullable SavedConnection existingConnection) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_connection_editor, binding.getRoot(), false);
+        android.widget.TextView titleView = dialogView.findViewById(R.id.dialog_title);
+        TextInputEditText hostInput = dialogView.findViewById(R.id.dialog_host_input);
+        TextInputEditText portInput = dialogView.findViewById(R.id.dialog_port_input);
+        TextInputEditText usernameInput = dialogView.findViewById(R.id.dialog_username_input);
+        TextInputEditText passwordInput = dialogView.findViewById(R.id.dialog_password_input);
+        MaterialButton connectButton = dialogView.findViewById(R.id.dialog_connect_button);
+        MaterialButton cancelButton = dialogView.findViewById(R.id.dialog_cancel_button);
+        MaterialButton saveButton = dialogView.findViewById(R.id.dialog_save_button);
+
+        titleView.setText(existingConnection == null ? R.string.new_connection_title : R.string.edit_connection_title);
+        saveButton.setText(existingConnection == null ? R.string.save_connection_action : R.string.update_connection_action);
+
+        if (existingConnection != null) {
+            hostInput.setText(existingConnection.host);
+            portInput.setText(String.valueOf(existingConnection.port));
+            usernameInput.setText(existingConnection.username);
+            passwordInput.setText(existingConnection.password);
+        } else {
+            portInput.setText("22");
+        }
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+            .setView(dialogView)
+            .create();
+        dialog.setOnShowListener(ignored -> {
+            if (dialog.getWindow() != null) {
+                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            }
+        });
+        cancelButton.setOnClickListener(v -> dialog.dismiss());
+        saveButton.setOnClickListener(v -> {
+            SshConnectionConfig config = buildConnectionConfig(
+                valueOf(hostInput.getText()),
+                valueOf(portInput.getText()),
+                valueOf(usernameInput.getText()),
+                valueOf(passwordInput.getText())
+            );
+            if (config == null) {
+                return;
+            }
+
+            upsertSavedConnection(config, existingConnection != null ? existingConnection.id : null, true);
+            dialog.dismiss();
+        });
+        connectButton.setOnClickListener(v -> {
+            SshConnectionConfig config = buildConnectionConfig(
+                valueOf(hostInput.getText()),
+                valueOf(portInput.getText()),
+                valueOf(usernameInput.getText()),
+                valueOf(passwordInput.getText())
+            );
+            if (config == null) {
+                return;
+            }
+
+            new MaterialAlertDialogBuilder(this)
+                .setTitle(R.string.save_before_connect_title)
+                .setMessage(R.string.save_before_connect_message)
+                .setNegativeButton(R.string.connect_without_saving_action, (confirmDialog, which) -> {
+                    dialog.dismiss();
+                    connect(config, existingConnection != null ? existingConnection.id : selectedConnectionId);
+                })
+                .setNeutralButton(R.string.cancel_action, null)
+                .setPositiveButton(R.string.save_and_connect_action, (confirmDialog, which) -> {
+                    SavedConnection savedConnection = upsertSavedConnection(
+                        config,
+                        existingConnection != null ? existingConnection.id : null,
+                        true
+                    );
+                    dialog.dismiss();
+                    connect(savedConnection);
+                })
+                .show();
+        });
+        dialog.show();
+    }
+
+    private SavedConnection upsertSavedConnection(SshConnectionConfig config, @Nullable String preferredConnectionId, boolean showToast) {
+        SavedConnection existingConnection = findMatchingConnection(config.getHost(), config.getPort(), config.getUsername());
+        String connectionId = !TextUtils.isEmpty(preferredConnectionId)
+            ? preferredConnectionId
+            : existingConnection != null ? existingConnection.id : UUID.randomUUID().toString();
+        SavedConnection savedConnection = new SavedConnection(
+            connectionId,
+            config.getHost(),
+            config.getPort(),
+            config.getUsername(),
+            config.getPassword()
+        );
+
+        boolean updated = false;
+        for (int i = 0; i < savedConnections.size(); i++) {
+            if (TextUtils.equals(savedConnections.get(i).id, connectionId)) {
+                savedConnections.set(i, savedConnection);
+                updated = true;
+                break;
+            }
+        }
+
+        if (!updated) {
+            savedConnections.add(0, savedConnection);
+        }
+
+        selectedConnectionId = connectionId;
+        persistSavedConnections();
+        renderSavedConnections();
+        if (showToast) {
+            toast(getString(updated ? R.string.connection_updated : R.string.connection_saved));
+        }
+        return savedConnection;
+    }
+
+    private void restoreSavedConnections() {
+        loadSavedConnections();
+        migrateLegacyConnectionDraftIfNeeded();
+
+        SavedConnection selectedConnection = findSavedConnectionById(preferences.getString(KEY_SELECTED_CONNECTION_ID, null));
+        if (selectedConnection == null && !savedConnections.isEmpty()) {
+            selectedConnection = savedConnections.get(0);
+        }
+
+        if (selectedConnection != null) {
+            selectedConnectionId = selectedConnection.id;
+        } else {
+            selectedConnectionId = null;
+        }
+
+        persistSelectedConnectionId();
+        renderSavedConnections();
+    }
+
+    private void loadSavedConnections() {
+        savedConnections.clear();
+        String savedConnectionsJson = preferences.getString(KEY_SAVED_CONNECTIONS, "[]");
+        if (TextUtils.isEmpty(savedConnectionsJson)) {
+            return;
+        }
+
+        try {
+            JSONArray jsonArray = new JSONArray(savedConnectionsJson);
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.optJSONObject(i);
+                SavedConnection savedConnection = SavedConnection.fromJson(jsonObject);
+                if (savedConnection != null) {
+                    savedConnections.add(savedConnection);
+                }
+            }
+        } catch (JSONException e) {
+            Log.w(INPUT_LOG_TAG, "Failed to load saved connections", e);
+        }
+    }
+
+    private void migrateLegacyConnectionDraftIfNeeded() {
+        if (!savedConnections.isEmpty()) {
+            return;
+        }
+
+        String host = preferences.getString(KEY_HOST, "");
+        String username = preferences.getString(KEY_USERNAME, "");
+        String password = preferences.getString(KEY_PASSWORD, "");
+        String portValue = preferences.getString(KEY_PORT, "22");
+        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+            return;
+        }
+
+        int port = 22;
+        try {
+            port = Integer.parseInt(portValue);
+        } catch (NumberFormatException ignored) {
+        }
+
+        SavedConnection legacyConnection = new SavedConnection(
+            UUID.randomUUID().toString(),
+            host,
+            port,
+            username,
+            password
+        );
+        savedConnections.add(legacyConnection);
+        selectedConnectionId = legacyConnection.id;
+        persistSavedConnections();
+    }
+
+    private void persistSavedConnections() {
+        JSONArray jsonArray = new JSONArray();
+        for (SavedConnection savedConnection : savedConnections) {
+            jsonArray.put(savedConnection.toJson());
+        }
+
         preferences.edit()
-            .putString(KEY_HOST, host)
-            .putString(KEY_PORT, port)
-            .putString(KEY_USERNAME, username)
+            .putString(KEY_SAVED_CONNECTIONS, jsonArray.toString())
+            .putString(KEY_SELECTED_CONNECTION_ID, selectedConnectionId)
             .apply();
     }
 
-    private void restoreConnectionDraft() {
-        binding.hostInput.setText(preferences.getString(KEY_HOST, ""));
-        binding.portInput.setText(preferences.getString(KEY_PORT, "22"));
-        binding.usernameInput.setText(preferences.getString(KEY_USERNAME, ""));
+    private void persistSelectedConnectionId() {
+        preferences.edit()
+            .putString(KEY_SELECTED_CONNECTION_ID, selectedConnectionId)
+            .apply();
+    }
+
+    private void renderSavedConnections() {
+        binding.savedConnectionsContainer.removeAllViews();
+        boolean isEmpty = savedConnections.isEmpty();
+        binding.savedConnectionsEmpty.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        binding.savedConnectionsContainer.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
+        if (isEmpty) {
+            return;
+        }
+
+        for (SavedConnection savedConnection : savedConnections) {
+            View itemView = getLayoutInflater().inflate(R.layout.item_saved_connection, binding.savedConnectionsContainer, false);
+            MaterialCardView cardView = itemView.findViewById(R.id.saved_connection_card);
+            android.widget.TextView nameView = itemView.findViewById(R.id.saved_connection_name);
+            android.widget.TextView detailsView = itemView.findViewById(R.id.saved_connection_details);
+            MaterialButton editButton = itemView.findViewById(R.id.edit_saved_connection_button);
+            MaterialButton connectButton = itemView.findViewById(R.id.connect_saved_connection_button);
+            AppCompatImageButton deleteButton = itemView.findViewById(R.id.delete_saved_connection_button);
+
+            boolean selected = TextUtils.equals(savedConnection.id, selectedConnectionId);
+            cardView.setStrokeColor(ContextCompat.getColor(this, selected ? R.color.saved_connection_selected_stroke : R.color.drawer_field_stroke));
+            cardView.setCardBackgroundColor(ContextCompat.getColor(this, selected ? R.color.saved_connection_selected_surface : R.color.drawer_field_surface));
+            cardView.setStrokeWidth(dp(selected ? 2 : 1));
+            nameView.setText(savedConnection.getDisplayName());
+            detailsView.setText(savedConnection.getDisplayDetails());
+
+            cardView.setOnClickListener(v -> selectSavedConnection(savedConnection));
+            editButton.setOnClickListener(v -> showConnectionEditor(savedConnection));
+            connectButton.setOnClickListener(v -> connect(savedConnection));
+            deleteButton.setOnClickListener(v -> deleteSavedConnection(savedConnection));
+            binding.savedConnectionsContainer.addView(itemView);
+        }
+    }
+
+    private void selectSavedConnection(SavedConnection savedConnection) {
+        selectedConnectionId = savedConnection.id;
+        persistSelectedConnectionId();
+        renderSavedConnections();
+    }
+
+    private void deleteSavedConnection(SavedConnection savedConnection) {
+        for (int i = 0; i < savedConnections.size(); i++) {
+            if (TextUtils.equals(savedConnections.get(i).id, savedConnection.id)) {
+                savedConnections.remove(i);
+                break;
+            }
+        }
+
+        if (TextUtils.equals(selectedConnectionId, savedConnection.id)) {
+            if (savedConnections.isEmpty()) {
+                selectedConnectionId = null;
+            } else {
+                selectedConnectionId = savedConnections.get(0).id;
+            }
+        }
+
+        persistSavedConnections();
+        renderSavedConnections();
+        toast(getString(R.string.connection_deleted));
+    }
+
+    private SavedConnection findMatchingConnection(String host, int port, String username) {
+        for (SavedConnection savedConnection : savedConnections) {
+            if (savedConnection.port == port
+                && TextUtils.equals(savedConnection.host, host)
+                && TextUtils.equals(savedConnection.username, username)) {
+                return savedConnection;
+            }
+        }
+        return null;
+    }
+
+    private SavedConnection findSavedConnectionById(String connectionId) {
+        if (TextUtils.isEmpty(connectionId)) {
+            return null;
+        }
+
+        for (SavedConnection savedConnection : savedConnections) {
+            if (TextUtils.equals(savedConnection.id, connectionId)) {
+                return savedConnection;
+            }
+        }
+        return null;
+    }
+
+    private int dp(int value) {
+        return Math.round(getResources().getDisplayMetrics().density * value);
     }
 
     private void showPasteMenu(MotionEvent event) {
@@ -372,6 +710,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     public void onConnected() {
         binding.statusText.setText(R.string.status_connected);
         setConnectionPanelExpanded(false);
+        updateConnectionActions(true);
         SshConnectionService.start(this);
         terminalView.post(terminalView::requestFocus);
     }
@@ -379,6 +718,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     @Override
     public void onDisconnected(String message) {
         binding.statusText.setText(message);
+        updateConnectionActions(false);
         SshConnectionService.stop(this);
     }
 
@@ -593,5 +933,68 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     @Override
     public Integer getTerminalCursorStyle() {
         return TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK;
+    }
+
+    private static final class SavedConnection {
+        private static final String JSON_ID = "id";
+        private static final String JSON_HOST = "host";
+        private static final String JSON_PORT = "port";
+        private static final String JSON_USERNAME = "username";
+        private static final String JSON_PASSWORD = "password";
+
+        private final String id;
+        private final String host;
+        private final int port;
+        private final String username;
+        private final String password;
+
+        private SavedConnection(String id, String host, int port, String username, String password) {
+            this.id = id;
+            this.host = host;
+            this.port = port;
+            this.username = username;
+            this.password = password;
+        }
+
+        private JSONObject toJson() {
+            JSONObject jsonObject = new JSONObject();
+            try {
+                jsonObject.put(JSON_ID, id);
+                jsonObject.put(JSON_HOST, host);
+                jsonObject.put(JSON_PORT, port);
+                jsonObject.put(JSON_USERNAME, username);
+                jsonObject.put(JSON_PASSWORD, password);
+            } catch (JSONException ignored) {
+            }
+            return jsonObject;
+        }
+
+        private static SavedConnection fromJson(JSONObject jsonObject) {
+            if (jsonObject == null) {
+                return null;
+            }
+
+            String id = jsonObject.optString(JSON_ID, "");
+            String host = jsonObject.optString(JSON_HOST, "");
+            String username = jsonObject.optString(JSON_USERNAME, "");
+            String password = jsonObject.optString(JSON_PASSWORD, "");
+            int port = jsonObject.optInt(JSON_PORT, 22);
+            if (TextUtils.isEmpty(id) || TextUtils.isEmpty(host) || TextUtils.isEmpty(username)) {
+                return null;
+            }
+            return new SavedConnection(id, host, port, username, password);
+        }
+
+        private String getDisplayName() {
+            return username + "@" + host;
+        }
+
+        private String getDisplayDetails() {
+            return host + ":" + port;
+        }
+
+        private SshConnectionConfig toConfig() {
+            return new SshConnectionConfig(host, port, username, password);
+        }
     }
 }

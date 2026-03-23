@@ -1,8 +1,19 @@
 <resources>
     <color name="surface_background">#F4F1EA</color>
     <color name="terminal_background">#11161C</color>
+    <color name="drawer_surface">#24272B</color>
+    <color name="dialog_surface">#1C2127</color>
+    <color name="dialog_stroke">#2E3942</color>
     <color name="card_stroke">#DED6C8</color>
+    <color name="top_bar_surface">#DD182028</color>
+    <color name="top_bar_stroke">#2FFFFFFF</color>
+    <color name="drawer_field_surface">#101417</color>
+    <color name="drawer_field_stroke">#38424A</color>
     <color name="text_primary">#1E2933</color>
     <color name="text_secondary">#66737F</color>
+    <color name="text_on_dark">#F5F8FA</color>
+    <color name="text_muted_on_dark">#A8BAC7</color>
+    <color name="saved_connection_selected_surface">#153339</color>
+    <color name="saved_connection_selected_stroke">#31B5A7</color>
     <color name="brand">#0E766E</color>
 </resources>

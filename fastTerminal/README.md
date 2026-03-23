@@ -1,65 +1,33 @@
 # FastTerminal
 
-`FastTerminal` is a lightweight Android SSH terminal app focused on external keyboard and mouse workflows.
+FastTerminal is an Android SSH terminal focused on external keyboard and mouse use.
 
-## Features
+Current highlights:
 
-- SSH password login with interactive shell over `xterm-256color`
-- Physical `Esc` is always sent to the terminal instead of closing the app
-- External mouse left-button drag selects terminal text like a desktop terminal
-- External mouse right-button opens a paste menu near the click position
-- Touch and hardware keyboard font scaling support
-- Connection form collapses after connect to keep the terminal area clean
+- Physical `Esc` is always sent to the terminal and will not trigger Android back/exit.
+- Mouse left drag selects terminal text; right click shows paste near the pointer.
+- Multiple SSH connections can be saved locally, edited, deleted, and connected from the side drawer.
+- SSH sessions stay alive when the app goes to the background through a foreground service.
+- The terminal UI is optimized for tablet / desktop-style Android use.
 
-## Project Layout
+Build requirements:
 
-- `app/`: Android application module
-- `gradle/`, `gradlew`, `gradlew.bat`: Gradle wrapper
-
-## Build Requirements
-
-- macOS, Linux, or Windows
 - JDK 17
-- Android SDK with:
-  - `platform-tools`
-  - `platforms;android-35`
-  - `build-tools;35.0.0`
+- Android SDK with `platforms;android-35` and `build-tools;35.0.0`
+- A `local.properties` file with `sdk.dir=/path/to/your/android/sdk`
 
-## Build Guide
-
-1. Create `local.properties` in this directory:
-
-```properties
-sdk.dir=/absolute/path/to/your/Android/sdk
-```
-
-2. Build the debug APK:
+Build debug APK:
 
 ```bash
-cd fastTerminal
-JAVA_HOME=$(/usr/libexec/java_home -v 17) ./gradlew :app:assembleDebug
+JAVA_HOME=$(/usr/libexec/java_home -v 17) GRADLE_USER_HOME=$PWD/.gradle-home ./gradlew :app:assembleDebug
 ```
 
-3. The APK will be generated at:
-
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-4. Optional: install it with `adb`:
+Install to device:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./android-sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-## Prebuilt APK
+Debug APK output:
 
-If you just want to try the app, use the bundled APK in this directory:
-
-- `fastTerminal-debug.apk`
-
-## Notes
-
-- Current authentication is password-only.
-- Host key verification still needs hardening before production use.
-- `local.properties` is intentionally ignored and should stay local.
+- `app/build/outputs/apk/debug/app-debug.apk`

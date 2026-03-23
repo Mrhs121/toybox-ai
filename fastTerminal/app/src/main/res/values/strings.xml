@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">FastTerminal</string>
-    <string name="connection_title">SSH Connection</string>
+    <string name="connection_title">SSH Settings</string>
+    <string name="connection_subtitle">Saved locally on this device. Edit once, then reconnect with a single tap.</string>
     <string name="host_hint">Host</string>
     <string name="port_hint">Port</string>
     <string name="username_hint">Username</string>
@@ -21,6 +22,25 @@
     <string name="invalid_port">Port must be a valid number.</string>
     <string name="default_terminal_banner">Ready. Fill in SSH info above and connect.</string>
     <string name="show_connection_panel">SSH</string>
+    <string name="open_connection_panel">Open SSH settings</string>
+    <string name="save_connection_action">Save</string>
+    <string name="update_connection_action">Update</string>
+    <string name="new_connection_action">New</string>
+    <string name="edit_connection_action">Edit</string>
+    <string name="connect_without_saving_action">Connect Only</string>
+    <string name="save_and_connect_action">Save &amp; Connect</string>
+    <string name="connection_saved">Connection saved</string>
+    <string name="connection_updated">Connection updated</string>
+    <string name="connection_deleted">Connection deleted</string>
+    <string name="saved_connection_section">Saved Connections</string>
+    <string name="saved_connections_empty">No saved SSH profiles yet. Tap New to add your first SSH connection.</string>
+    <string name="delete_connection_action">Delete connection</string>
+    <string name="password_storage_hint">Password is stored only on this device so saved connections can reconnect with a single tap.</string>
+    <string name="new_connection_title">New SSH Connection</string>
+    <string name="edit_connection_title">Edit SSH Connection</string>
+    <string name="save_before_connect_title">Save connection first?</string>
+    <string name="save_before_connect_message">Do you want to save this SSH connection before connecting?</string>
+    <string name="cancel_action">Cancel</string>
     <string name="ssh_service_title">FastTerminal SSH session</string>
     <string name="ssh_service_text">SSH connection is running in the background.</string>
     <string name="ssh_service_channel_name">SSH session</string>
