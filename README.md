@@ -3,6 +3,22 @@ Toys written by ai
 
 用 ai 写的一些小玩具
 
+## 🖥️ Chat Viewer 桌面版 - [chat-viewer](./chat-viewer)
+
+基于 Electron 的 Claude Code & Codex 对话记录查看器桌面客户端。支持自动扫描本地对话文件、按项目分组浏览、深色/浅色主题切换、工具消息折叠、搜索过滤，以及 Markdown/HTML 导出。
+
+下载地址：[GitHub Releases](https://github.com/Mrhs121/toybox-ai/releases)（提供 macOS arm64 和 x64 版本）
+
+本地运行：
+
+```bash
+cd chat-viewer
+npm install
+npm start
+```
+
+![Chat Viewer Desktop](./img/chat-viewer-desktop.png)
+
 ## 🧩 Codex 对话记录查看器 - [codex-chat-viewer.html](./codex-chat-viewer.html)
 
 Codex Desktop 的会话文件保存在本地 `~/.codex/sessions/` 目录下，但官方客户端无法直接导出或分享完整的对话内容。这个小工具可以直接加载这些 JSONL 文件，将对话以清晰、美观的界面呈现出来，并支持搜索、过滤和 Markdown 渲染。
