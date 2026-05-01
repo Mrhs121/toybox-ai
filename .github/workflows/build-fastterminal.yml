@@ -64,6 +64,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Get date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
@@ -72,8 +76,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: fastterminal-v${{ github.run_number }}
-          name: FastTerminal Build ${{ github.run_number }}
+          tag_name: fastterminal-${{ steps.date.outputs.date }}
+          name: FastTerminal ${{ steps.date.outputs.date }}
           files: artifacts/**/*.apk
           draft: false
           prerelease: false
