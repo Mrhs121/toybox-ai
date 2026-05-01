@@ -76,7 +76,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: fastterminal-${{ steps.date.outputs.date }}
+          tag_name: fastterminal-${{ steps.date.outputs.date }}-${{ github.run_number }}
           name: FastTerminal ${{ steps.date.outputs.date }}
           files: artifacts/**/*.apk
           draft: false

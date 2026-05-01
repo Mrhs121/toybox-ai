@@ -59,7 +59,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: chat-viewer-${{ steps.date.outputs.date }}
+          tag_name: chat-viewer-${{ steps.date.outputs.date }}-${{ github.run_number }}
           name: Chat Viewer ${{ steps.date.outputs.date }}
           files: artifacts/**/*.zip
           draft: false
