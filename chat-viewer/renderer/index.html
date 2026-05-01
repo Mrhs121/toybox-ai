@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Viewer</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1 class="app-title">Chat Viewer</h1>
+        <div class="sidebar-actions">
+          <button id="btnTheme" class="icon-btn" title="切换主题">
+            <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button id="btnRefresh" class="icon-btn" title="刷新">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          </button>
+          <button id="btnSettings" class="icon-btn" title="设置">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-search">
+        <input type="text" id="searchInput" placeholder="搜索对话...">
+      </div>
+
+      <div class="source-tabs">
+        <button class="source-tab active" data-source="all">全部</button>
+        <button class="source-tab" data-source="cc">Claude Code</button>
+        <button class="source-tab" data-source="codex">Codex</button>
+      </div>
+
+      <div class="conversation-list" id="conversationList">
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>正在扫描对话记录...</p>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <span id="convCount">0 条对话</span>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="welcome-screen" id="welcomeScreen">
+        <div class="welcome-icon">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none"><rect x="8" y="8" width="48" height="48" rx="12" stroke="currentColor" stroke-width="2"/><path d="M24 24h16M24 32h12M24 40h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </div>
+        <h2>Chat Viewer</h2>
+        <p>Claude Code & Codex 对话记录查看器</p>
+        <p class="welcome-hint">从左侧选择一条对话开始查看</p>
+      </div>
+
+      <div class="viewer" id="viewer" style="display:none;">
+        <div class="viewer-header">
+          <div class="viewer-meta" id="viewerMeta"></div>
+          <div class="viewer-stats" id="viewerStats"></div>
+          <div class="viewer-actions">
+            <button id="btnExportMd" class="action-btn">导出 Markdown</button>
+            <button id="btnExportHtml" class="action-btn">导出 HTML</button>
+            <button id="btnOpenFinder" class="action-btn">在 Finder 中显示</button>
+          </div>
+        </div>
+
+        <div class="viewer-filters">
+          <button class="filter-btn active" data-filter="all">全部</button>
+          <button class="filter-btn" data-filter="user">用户</button>
+          <button class="filter-btn" data-filter="assistant">助手</button>
+          <button class="filter-btn" data-filter="tool">工具</button>
+          <button class="filter-btn" data-filter="system">系统</button>
+          <div class="viewer-search">
+            <input type="text" id="viewerSearch" placeholder="搜索消息内容...">
+          </div>
+        </div>
+
+        <div class="messages-container" id="messagesContainer"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>设置</h2>
+        <button class="modal-close" id="btnCloseSettings">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-group">
+          <h3>Claude Code 对话路径</h3>
+          <p class="setting-desc">Claude Code 的对话记录存储目录，通常是 ~/.claude/projects</p>
+          <div id="ccPaths" class="path-list"></div>
+          <button class="add-path-btn" data-target="cc">+ 添加路径</button>
+        </div>
+
+        <div class="setting-group">
+          <h3>Codex 对话路径</h3>
+          <p class="setting-desc">Codex 的对话记录存储目录，通常是 ~/.codex/sessions</p>
+          <div id="codexPaths" class="path-list"></div>
+          <button class="add-path-btn" data-target="codex">+ 添加路径</button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="btnCancelSettings">取消</button>
+        <button class="btn-primary" id="btnSaveSettings">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
