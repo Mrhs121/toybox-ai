@@ -2,6 +2,7 @@
   "name": "chat-viewer",
   "version": "1.0.0",
   "description": "Claude Code & Codex 对话记录查看器",
+  "repository": "github:Mrhs121/toybox-ai",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
