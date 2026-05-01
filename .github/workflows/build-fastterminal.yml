@@ -23,15 +23,35 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build debug APK
+      - name: Decode keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > fastTerminal/fastterminal.jks
+          fi
+
+      - name: Create keystore.properties
+        env:
+          KEYSTORE_STORE_PASSWORD: ${{ secrets.KEYSTORE_STORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+          KEYSTORE_KEY_PASSWORD: ${{ secrets.KEYSTORE_KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_STORE_PASSWORD" ]; then
+            printf 'storeFile=../fastterminal.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+              "$KEYSTORE_STORE_PASSWORD" "$KEYSTORE_KEY_ALIAS" "$KEYSTORE_KEY_PASSWORD" \
+              > fastTerminal/keystore.properties
+          fi
+
+      - name: Build release APK
         working-directory: fastTerminal
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FastTerminal-debug
-          path: fastTerminal/app/build/outputs/apk/debug/app-debug.apk
+          name: FastTerminal-release
+          path: fastTerminal/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
 
   create-release:
