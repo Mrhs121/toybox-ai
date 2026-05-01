@@ -17,7 +17,9 @@ import android.view.MotionEvent;
 import android.view.PointerIcon;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.view.inputmethod.InputMethodManager;
 
@@ -77,6 +79,10 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private final List<String> tabSessionIds = new ArrayList<>();
     private String selectedConnectionId;
     private String activeSessionId;
+    private boolean controlKeyActive = false;
+    private boolean altKeyActive = false;
+    private View ctrlButton;
+    private View altButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +94,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         restoreSavedConnections();
         setupTerminal();
         bindActions();
+        setupShortcutBar();
         if (savedConnections.isEmpty()) {
             setConnectionPanelExpanded(true);
         }
@@ -229,6 +236,139 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 }
             }
         });
+    }
+
+    private void setupShortcutBar() {
+        // Row 1: special characters
+        String[] row1Keys = {"Esc", "Tab", "~", "/", "|", "-", "_", "=", "+", "[", "]", "{", "}", "\\", ":", ";", "\"", "'"};
+        for (String key : row1Keys) {
+            binding.shortcutRow1.addView(createShortcutKeyButton(key, false));
+        }
+
+        // Row 2: modifier keys and Ctrl combos
+        ctrlButton = createShortcutKeyButton("Ctrl", true);
+        altButton = createShortcutKeyButton("Alt", true);
+        binding.shortcutRow2.addView(ctrlButton);
+        binding.shortcutRow2.addView(altButton);
+
+        String[] arrowKeys = {"↑", "↓", "←", "→"};
+        for (String key : arrowKeys) {
+            binding.shortcutRow2.addView(createShortcutKeyButton(key, false));
+        }
+
+        String[] ctrlCombos = {"Ctrl+C", "Ctrl+D", "Ctrl+Z", "Ctrl+L", "Ctrl+R", "Ctrl+A", "Ctrl+E"};
+        for (String key : ctrlCombos) {
+            binding.shortcutRow2.addView(createShortcutKeyButton(key, false));
+        }
+    }
+
+    private View createShortcutKeyButton(String label, boolean isModifier) {
+        TextView btn = new TextView(this);
+        btn.setText(label);
+        btn.setTextSize(12f);
+        btn.setTextColor(ContextCompat.getColor(this, R.color.text_on_dark));
+        btn.setGravity(Gravity.CENTER);
+        int hPad = (int) (10 * getResources().getDisplayMetrics().density);
+        int vPad = (int) (5 * getResources().getDisplayMetrics().density);
+        btn.setPadding(hPad, vPad, hPad, vPad);
+        btn.setBackgroundResource(isModifier ? R.drawable.bg_shortcut_key_modifier : R.drawable.bg_shortcut_key);
+
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT);
+        int margin = (int) (2 * getResources().getDisplayMetrics().density);
+        lp.setMargins(margin, 0, margin, 0);
+        btn.setLayoutParams(lp);
+
+        btn.setFocusable(false);
+        btn.setFocusableInTouchMode(false);
+
+        btn.setOnClickListener(v -> onShortcutKeyPressed(label, isModifier));
+        return btn;
+    }
+
+    private void onShortcutKeyPressed(String label, boolean isModifier) {
+        if (terminalView != null) {
+            terminalView.requestFocus();
+        }
+
+        SshTerminalSession session = getActiveSession();
+        if (session == null && sshTerminalSession == null) return;
+        SshTerminalSession active = session != null ? session : sshTerminalSession;
+
+        switch (label) {
+            case "Ctrl":
+                controlKeyActive = !controlKeyActive;
+                ctrlButton.setBackgroundResource(controlKeyActive
+                    ? R.drawable.bg_shortcut_key_modifier_active : R.drawable.bg_shortcut_key_modifier);
+                return;
+            case "Alt":
+                altKeyActive = !altKeyActive;
+                altButton.setBackgroundResource(altKeyActive
+                    ? R.drawable.bg_shortcut_key_modifier_active : R.drawable.bg_shortcut_key_modifier);
+                return;
+            case "Esc":
+                active.sendEscape();
+                return;
+            case "Tab":
+                if (terminalView != null) terminalView.inputCodePoint(9, false, false);
+                return;
+            case "↑":
+                sendArrowKey(KeyEvent.KEYCODE_DPAD_UP);
+                return;
+            case "↓":
+                sendArrowKey(KeyEvent.KEYCODE_DPAD_DOWN);
+                return;
+            case "←":
+                sendArrowKey(KeyEvent.KEYCODE_DPAD_LEFT);
+                return;
+            case "→":
+                sendArrowKey(KeyEvent.KEYCODE_DPAD_RIGHT);
+                return;
+            case "Ctrl+C":
+                active.writeCodePoint(false, 3);
+                break;
+            case "Ctrl+D":
+                active.writeCodePoint(false, 4);
+                break;
+            case "Ctrl+Z":
+                active.writeCodePoint(false, 26);
+                break;
+            case "Ctrl+L":
+                active.writeCodePoint(false, 12);
+                break;
+            case "Ctrl+R":
+                active.writeCodePoint(false, 18);
+                break;
+            case "Ctrl+A":
+                active.writeCodePoint(false, 1);
+                break;
+            case "Ctrl+E":
+                active.writeCodePoint(false, 5);
+                break;
+            default:
+                // Regular character key
+                if (terminalView != null) {
+                    terminalView.inputCodePoint(label.charAt(0), false, false);
+                }
+                break;
+        }
+
+        // Reset modifier states after sending a key
+        if (!isModifier) {
+            controlKeyActive = false;
+            altKeyActive = false;
+            ctrlButton.setBackgroundResource(R.drawable.bg_shortcut_key_modifier);
+            altButton.setBackgroundResource(R.drawable.bg_shortcut_key_modifier);
+        }
+    }
+
+    private void sendArrowKey(int keyCode) {
+        if (terminalView == null) return;
+        KeyEvent down = new KeyEvent(KeyEvent.ACTION_DOWN, keyCode);
+        terminalView.onKeyDown(keyCode, down);
+        KeyEvent up = new KeyEvent(KeyEvent.ACTION_UP, keyCode);
+        terminalView.onKeyUp(keyCode, up);
     }
 
     private void connect(@Nullable SavedConnection savedConnection) {
@@ -941,12 +1081,12 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     @Override
     public boolean readControlKey() {
-        return false;
+        return controlKeyActive;
     }
 
     @Override
     public boolean readAltKey() {
-        return false;
+        return altKeyActive;
     }
 
     @Override

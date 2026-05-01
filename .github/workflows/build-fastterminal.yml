@@ -1,40 +1,37 @@
-name: Build Chat Viewer
+name: Build FastTerminal
 
 on:
   push:
     paths:
-      - 'chat-viewer/**'
+      - 'fastTerminal/**'
     branches: [main]
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: chat-viewer/package-lock.json
+          java-version: '17'
+          distribution: 'zulu'
 
-      - name: Install dependencies
-        working-directory: chat-viewer
-        run: npm ci
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-      - name: Build
-        working-directory: chat-viewer
-        run: npm run build
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build debug APK
+        working-directory: fastTerminal
+        run: ./gradlew assembleDebug
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Chat-Viewer-mac-arm64
-          path: chat-viewer/dist/*.zip
+          name: FastTerminal-debug
+          path: fastTerminal/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
   create-release:
@@ -55,8 +52,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: chat-viewer-v${{ github.run_number }}
-          name: Chat Viewer Build ${{ github.run_number }}
-          files: artifacts/**/*.zip
+          tag_name: fastterminal-v${{ github.run_number }}
+          name: FastTerminal Build ${{ github.run_number }}
+          files: artifacts/**/*.apk
           draft: false
           prerelease: false
