@@ -176,6 +176,21 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         if (sshTerminalSession != null && shouldRoutePhysicalKeyboardToTerminal() && shouldTreatAsTerminalHardwareKey(event)) {
             Log.d(INPUT_LOG_TAG, "dispatchKeyEvent action=" + event.getAction() + " keyCode=" + event.getKeyCode()
                 + " source=" + event.getSource() + " deviceId=" + event.getDeviceId());
+
+            // Only intercept keys that need terminal-specific handling (Ctrl/Alt combos, Escape).
+            // Regular character keys go through the normal IME pipeline so input method
+            // switching (e.g. Shift for Chinese/English) works correctly.
+            boolean hasModifier = event.isCtrlPressed() || event.isAltPressed();
+            boolean isSpecialKey = event.getKeyCode() == KeyEvent.KEYCODE_ESCAPE
+                || event.getKeyCode() == KeyEvent.KEYCODE_BACK
+                || event.getKeyCode() == KeyEvent.KEYCODE_TAB;
+
+            if (!hasModifier && !isSpecialKey) {
+                // Let regular keys go through IME pipeline
+                Log.d(INPUT_LOG_TAG, "passing to IME pipeline");
+                return super.dispatchKeyEvent(event);
+            }
+
             if (event.getAction() == KeyEvent.ACTION_DOWN && handleTerminalZoomShortcut(event)) {
                 Log.d(INPUT_LOG_TAG, "handled by zoom shortcut");
                 return true;
@@ -240,6 +255,8 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             case KeyEvent.KEYCODE_MEDIA_PREVIOUS:
             case KeyEvent.KEYCODE_MEDIA_STOP:
             case KeyEvent.KEYCODE_MUTE:
+            case KeyEvent.KEYCODE_SHIFT_LEFT:
+            case KeyEvent.KEYCODE_SHIFT_RIGHT:
                 return false;
             default:
                 return true;
@@ -1332,7 +1349,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     @Override
     public boolean shouldEnforceCharBasedInput() {
-        return false;
+        return true;
     }
 
     @Override
