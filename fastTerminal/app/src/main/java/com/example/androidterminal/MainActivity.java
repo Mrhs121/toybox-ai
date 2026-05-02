@@ -52,6 +52,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import android.graphics.Typeface;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -140,6 +142,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 return true;
             }
 
+            if (event.getAction() == KeyEvent.ACTION_DOWN && handleCtrlTabShortcut(event)) {
+                Log.d(INPUT_LOG_TAG, "handled by ctrl tab shortcut");
+                return true;
+            }
+
             if (event.getKeyCode() == KeyEvent.KEYCODE_ESCAPE || event.getKeyCode() == KeyEvent.KEYCODE_BACK) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN) {
                     sshTerminalSession.sendEscape();
@@ -207,6 +214,8 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         terminalView.setFocusableInTouchMode(true);
         terminalView.setKeepScreenOn(true);
         terminalView.setTextSize(DEFAULT_TERMINAL_TEXT_SIZE_SP);
+        Typeface nerdFont = Typeface.createFromAsset(getAssets(), "fonts/JetBrainsMonoNerdFont-Regular.ttf");
+        terminalView.setTypeface(nerdFont);
         applyCompactPointerIcon();
 
         FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
@@ -253,6 +262,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
         String[] arrowKeys = {"↑", "↓", "←", "→"};
         for (String key : arrowKeys) {
+            binding.shortcutRow2.addView(createShortcutKeyButton(key, false));
+        }
+
+        String[] tabActions = {"Ctrl+T", "Ctrl+W", "Ctrl+←", "Ctrl+→"};
+        for (String key : tabActions) {
             binding.shortcutRow2.addView(createShortcutKeyButton(key, false));
         }
 
@@ -325,6 +339,20 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             case "→":
                 sendArrowKey(KeyEvent.KEYCODE_DPAD_RIGHT);
                 return;
+            case "Ctrl+T":
+                createNewTab(true);
+                break;
+            case "Ctrl+W":
+                if (activeSessionId != null) {
+                    closeTab(activeSessionId);
+                }
+                break;
+            case "Ctrl+←":
+                switchToAdjacentTab(-1);
+                break;
+            case "Ctrl+→":
+                switchToAdjacentTab(1);
+                break;
             case "Ctrl+C":
                 active.writeCodePoint(false, 3);
                 break;
@@ -440,6 +468,39 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             default:
                 return false;
         }
+    }
+
+    private boolean handleCtrlTabShortcut(KeyEvent event) {
+        if (!event.isCtrlPressed()) {
+            return false;
+        }
+
+        switch (event.getKeyCode()) {
+            case KeyEvent.KEYCODE_T:
+                createNewTab(true);
+                return true;
+            case KeyEvent.KEYCODE_W:
+                if (activeSessionId != null) {
+                    closeTab(activeSessionId);
+                }
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                switchToAdjacentTab(-1);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                switchToAdjacentTab(1);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private void switchToAdjacentTab(int direction) {
+        if (tabSessionIds.size() <= 1) return;
+        int currentIndex = tabSessionIds.indexOf(activeSessionId);
+        if (currentIndex < 0) return;
+        int newIndex = (currentIndex + direction + tabSessionIds.size()) % tabSessionIds.size();
+        switchToTab(tabSessionIds.get(newIndex));
     }
 
     private void stepTerminalFontSize(int delta) {
