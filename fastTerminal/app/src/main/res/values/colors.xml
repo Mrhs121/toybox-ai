@@ -13,7 +13,11 @@
     <color name="text_secondary">#66737F</color>
     <color name="text_on_dark">#F5F8FA</color>
     <color name="text_muted_on_dark">#A8BAC7</color>
-    <color name="saved_connection_selected_surface">#153339</color>
-    <color name="saved_connection_selected_stroke">#31B5A7</color>
+    <color name="saved_connection_selected_surface">#151B20</color>
+    <color name="saved_connection_selected_stroke">#5E8E8A</color>
+    <color name="tab_bar_surface">#161C22</color>
+    <color name="tab_surface">#161C22</color>
+    <color name="tab_surface_active">#2A3139</color>
+    <color name="tab_text_active">#F5F8FA</color>
     <color name="brand">#0E766E</color>
 </resources>

@@ -1,0 +1,66 @@
+name: Build Chat Viewer
+
+on:
+  push:
+    paths:
+      - 'chat-viewer/**'
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: chat-viewer/package-lock.json
+
+      - name: Install dependencies
+        working-directory: chat-viewer
+        run: npm ci
+
+      - name: Build
+        working-directory: chat-viewer
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Chat-Viewer-mac-arm64
+          path: chat-viewer/dist/*.zip
+          retention-days: 30
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: chat-viewer-${{ steps.date.outputs.date }}-${{ github.run_number }}
+          name: Chat Viewer ${{ steps.date.outputs.date }}
+          files: artifacts/**/*.zip
+          draft: false
+          prerelease: false

@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code 对话记录查看器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e4e4e4;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 30px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header .meta {
+            margin-top: 10px;
+            color: #888;
+            font-size: 14px;
+            white-space: pre-wrap;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        .stat {
+            text-align: center;
+            min-width: 90px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .file-upload {
+            text-align: center;
+            margin: 20px 0;
+            padding: 40px;
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .file-upload:hover {
+            border-color: #00d4ff;
+            background: rgba(0,212,255,0.05);
+        }
+
+        .file-upload input {
+            display: none;
+        }
+
+        .file-upload label {
+            cursor: pointer;
+            display: block;
+        }
+
+        .file-upload .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-upload p {
+            color: #888;
+        }
+
+        .conversation {
+            display: none;
+        }
+
+        .conversation.active {
+            display: block;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .filter-btn.active {
+            background: #00d4ff;
+            border-color: #00d4ff;
+            color: #1a1a2e;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 220px;
+        }
+
+        .search-box input {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #e4e4e4;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .search-box input:focus {
+            border-color: #00d4ff;
+        }
+
+        .search-box input::placeholder {
+            color: #666;
+        }
+
+        .message {
+            margin-bottom: 18px;
+            animation: fadeIn 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+            margin-left: 20%;
+        }
+
+        .message.assistant,
+        .message.tool,
+        .message.system,
+        .message.attachment,
+        .message.meta {
+            align-items: flex-start;
+            margin-right: 20%;
+        }
+
+        .message.user .message-content {
+            max-width: 90%;
+        }
+
+        .message.assistant .message-content,
+        .message.tool .message-content,
+        .message.system .message-content,
+        .message.attachment .message-content,
+        .message.meta .message-content {
+            max-width: 95%;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+
+        .message.user .message-header {
+            flex-direction: row-reverse;
+        }
+
+        .message-role,
+        .message-kind {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .message-role.user {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-role.assistant {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+        }
+
+        .message-role.tool {
+            background: linear-gradient(135deg, #ffb347 0%, #ff7043 100%);
+            color: white;
+        }
+
+        .message-role.system {
+            background: #4b5563;
+            color: #f3f4f6;
+        }
+
+        .message-role.attachment {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .message-role.meta {
+            background: #334155;
+            color: #cbd5e1;
+        }
+
+        .message-kind {
+            background: rgba(255,255,255,0.08);
+            color: #9ca3af;
+        }
+
+        .message-time {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .message-content {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 16px 20px;
+            border: 1px solid rgba(255,255,255,0.08);
+            position: relative;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            white-space: normal;
+        }
+
+        .message.user .message-content {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: rgba(102, 126, 234, 0.2);
+        }
+
+        .message.assistant .message-content {
+            background: rgba(17, 153, 142, 0.1);
+            border-color: rgba(17, 153, 142, 0.2);
+        }
+
+        .message.tool .message-content {
+            background: rgba(255, 179, 71, 0.08);
+            border-color: rgba(255, 179, 71, 0.2);
+        }
+
+        .message.system .message-content {
+            background: rgba(107, 114, 128, 0.12);
+            border-color: rgba(107, 114, 128, 0.22);
+        }
+
+        .message.attachment .message-content,
+        .message.meta .message-content {
+            background: rgba(148, 163, 184, 0.08);
+            border-color: rgba(148, 163, 184, 0.18);
+        }
+
+        .message-content pre {
+            background: rgba(0,0,0,0.32);
+            border-radius: 8px;
+            padding: 14px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .message-content code {
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            background: rgba(0,0,0,0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        .message-content pre code {
+            background: none;
+            padding: 0;
+        }
+
+        .message-content p,
+        .message-content ul,
+        .message-content ol,
+        .message-content blockquote {
+            margin: 10px 0;
+        }
+
+        .message-content ul,
+        .message-content ol {
+            padding-left: 24px;
+        }
+
+        .message-content a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        .message-content a:hover {
+            text-decoration: underline;
+        }
+
+        .message-content.collapsed {
+            max-height: 240px;
+            overflow: hidden;
+        }
+
+        .message-content.collapsed::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 90px;
+            background: linear-gradient(transparent, rgba(26, 26, 46, 0.96));
+        }
+
+        .expand-btn {
+            display: none;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            color: #00d4ff;
+            padding: 6px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .message-content.collapsed + .expand-btn {
+            display: inline-block;
+        }
+
+        .tool-call {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+
+        .tool-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffd166;
+            margin-bottom: 8px;
+        }
+
+        .kv-grid {
+            display: grid;
+            grid-template-columns: max-content 1fr;
+            gap: 8px 12px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .kv-key {
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+
+        .kv-value {
+            color: #e5e7eb;
+            word-break: break-word;
+        }
+
+        .empty-state,
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(0,212,255,0.2);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 700px) {
+            .container {
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 22px;
+            }
+
+            .message.user,
+            .message.assistant,
+            .message.tool,
+            .message.system,
+            .message.attachment,
+            .message.meta {
+                margin-left: 0;
+                margin-right: 0;
+            }
+
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Claude Code 对话记录查看器</h1>
+            <div class="meta" id="sessionMeta">加载 Claude Code JSONL 文件查看对话</div>
+            <div class="stats" id="stats" style="display: none;">
+                <div class="stat">
+                    <div class="stat-value" id="userCount">0</div>
+                    <div class="stat-label">用户消息</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="assistantCount">0</div>
+                    <div class="stat-label">助手消息</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="toolCount">0</div>
+                    <div class="stat-label">工具事件</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value" id="totalTokens">0</div>
+                    <div class="stat-label">输出 Token</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="file-upload" id="fileUpload">
+            <label>
+                <input type="file" id="fileInput" accept=".jsonl">
+                <div class="icon">📁</div>
+                <p>点击或拖拽 Claude Code 的 JSONL 对话文件到这里</p>
+            </label>
+        </div>
+
+        <div class="conversation" id="conversation">
+            <div class="nav-buttons">
+                <button class="nav-btn" id="backBtn">← 返回</button>
+                <button class="nav-btn" id="exportMarkdownBtn">导出 Markdown</button>
+                <button class="nav-btn" id="exportHtmlBtn">导出 HTML</button>
+                <button class="nav-btn" id="scrollToTop">↑ 顶部</button>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-filter="all">全部</button>
+                <button class="filter-btn" data-filter="user">用户</button>
+                <button class="filter-btn" data-filter="assistant">助手</button>
+                <button class="filter-btn" data-filter="tool">工具</button>
+                <button class="filter-btn" data-filter="system">系统</button>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="搜索消息、工具名、结果内容...">
+                </div>
+            </div>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        let allMessages = [];
+        let sessionMeta = null;
+        let activeFilters = new Set(['all']);
+        let searchQuery = '';
+
+        const fileInput = document.getElementById('fileInput');
+        const fileUpload = document.getElementById('fileUpload');
+        const conversation = document.getElementById('conversation');
+        const messagesContainer = document.getElementById('messages');
+        const sessionMetaEl = document.getElementById('sessionMeta');
+        const statsEl = document.getElementById('stats');
+        const searchInput = document.getElementById('searchInput');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadFile(file);
+            }
+        });
+
+        fileUpload.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            fileUpload.style.borderColor = '#00d4ff';
+        });
+
+        fileUpload.addEventListener('dragleave', () => {
+            fileUpload.style.borderColor = 'rgba(255,255,255,0.2)';
+        });
+
+        fileUpload.addEventListener('drop', (e) => {
+            e.preventDefault();
+            fileUpload.style.borderColor = 'rgba(255,255,255,0.2)';
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.jsonl')) {
+                loadFile(file);
+            }
+        });
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            conversation.classList.remove('active');
+            fileUpload.style.display = 'block';
+            fileUpload.innerHTML = `
+                <label>
+                    <input type="file" id="fileInput" accept=".jsonl">
+                    <div class="icon">📁</div>
+                    <p>点击或拖拽 Claude Code 的 JSONL 对话文件到这里</p>
+                </label>
+            `;
+            const nextInput = document.getElementById('fileInput');
+            nextInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) loadFile(file);
+            });
+            statsEl.style.display = 'none';
+            messagesContainer.innerHTML = '';
+        });
+
+        document.getElementById('scrollToTop').addEventListener('click', () => {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+
+        document.getElementById('exportMarkdownBtn').addEventListener('click', () => {
+            if (!allMessages.length) return;
+            const lines = [];
+            lines.push('# Claude Code 对话记录');
+            lines.push('');
+            if (sessionMeta) {
+                lines.push(`- 会话 ID: ${sessionMeta.sessionId || 'N/A'}`);
+                lines.push(`- 工作目录: ${sessionMeta.cwd || 'N/A'}`);
+                lines.push(`- 分支: ${sessionMeta.gitBranch || 'N/A'}`);
+                lines.push(`- 权限模式: ${sessionMeta.permissionMode || 'N/A'}`);
+                lines.push('');
+            }
+
+            allMessages.forEach((msg) => {
+                const title = `${getRoleLabel(msg.role)}${msg.kindLabel ? ` / ${msg.kindLabel}` : ''}`;
+                const time = msg.timestamp ? ` (${new Date(msg.timestamp).toLocaleString('zh-CN')})` : '';
+                lines.push(`## ${title}${time}`);
+                lines.push('');
+                lines.push(msg.exportText || msg.plainText || '');
+                lines.push('');
+            });
+
+            const blob = new Blob([lines.join('\n')], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `claude-chat-${(sessionMeta?.sessionId || 'export').slice(0, 8)}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('exportHtmlBtn').addEventListener('click', () => {
+            if (!allMessages.length) return;
+
+            const styleContent = document.querySelector('style').innerHTML;
+            const metaText = sessionMetaEl.textContent;
+            const statUser = document.getElementById('userCount').textContent;
+            const statAssistant = document.getElementById('assistantCount').textContent;
+            const statTool = document.getElementById('toolCount').textContent;
+            const statTokens = document.getElementById('totalTokens').textContent;
+
+            const messagesHtml = allMessages.map((msg, index) => {
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString('zh-CN') : '';
+                const needsCollapse = (msg.plainText || '').length > 1800;
+                return `
+                    <div class="message ${msg.role}" data-index="${index}">
+                        <div class="message-header">
+                            <span class="message-role ${msg.role}">${escapeHtml(getRoleLabel(msg.role))}</span>
+                            ${msg.kind && msg.kind !== 'message' ? `<span class="message-kind">${escapeHtml(msg.kindLabel || msg.kind)}</span>` : ''}
+                            ${time ? `<span class="message-time">${escapeHtml(time)}</span>` : ''}
+                        </div>
+                        <div class="message-content ${needsCollapse ? 'collapsed' : ''}">
+                            ${msg.html}
+                        </div>
+                        ${needsCollapse ? '<button class="expand-btn" onclick="expandMessage(this)">展开全文</button>' : ''}
+                    </div>
+                `;
+            }).join('');
+
+            const htmlContent = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code 对话记录</title>
+    <style>${styleContent}</style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Claude Code 对话记录</h1>
+            <div class="meta">${escapeHtml(metaText)}</div>
+            <div class="stats" style="display: flex;">
+                <div class="stat">
+                    <div class="stat-value">${escapeHtml(statUser)}</div>
+                    <div class="stat-label">用户消息</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${escapeHtml(statAssistant)}</div>
+                    <div class="stat-label">助手消息</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${escapeHtml(statTool)}</div>
+                    <div class="stat-label">工具事件</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-value">${escapeHtml(statTokens)}</div>
+                    <div class="stat-label">输出 Token</div>
+                </div>
+            </div>
+        </div>
+        <div class="conversation active">
+            <div id="messages">${messagesHtml}</div>
+        </div>
+    </div>
+    <script>
+        function expandMessage(btn) {
+            const content = btn.previousElementSibling;
+            content.classList.remove('collapsed');
+            btn.style.display = 'none';
+        }
+    <\/script>
+</body>
+</html>`;
+
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `claude-chat-${(sessionMeta?.sessionId || 'export').slice(0, 8)}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        filterBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const filter = btn.dataset.filter;
+
+                if (filter === 'all') {
+                    activeFilters = new Set(['all']);
+                } else {
+                    activeFilters.delete('all');
+                    if (activeFilters.has(filter)) {
+                        activeFilters.delete(filter);
+                    } else {
+                        activeFilters.add(filter);
+                    }
+
+                    if (activeFilters.size === 0) {
+                        activeFilters = new Set(['all']);
+                    }
+                }
+
+                syncFilterButtons();
+                renderMessages();
+            });
+        });
+
+        function syncFilterButtons() {
+            filterBtns.forEach(btn => {
+                const filter = btn.dataset.filter;
+                btn.classList.toggle('active', activeFilters.has(filter));
+            });
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderMessages();
+        });
+
+        function loadFile(file) {
+            fileUpload.innerHTML = '<div class="loading"><div class="spinner"></div><p>正在加载...</p></div>';
+            const reader = new FileReader();
+            reader.onload = (e) => parseJSONL(e.target.result);
+            reader.readAsText(file);
+        }
+
+        function parseJSONL(content) {
+            const lines = content.split('\n').filter(Boolean);
+            const parsed = [];
+            const stats = {
+                user: 0,
+                assistant: 0,
+                tool: 0,
+                totalTokens: 0
+            };
+
+            sessionMeta = null;
+
+            lines.forEach((line, index) => {
+                try {
+                    const record = JSON.parse(line);
+                    ingestRecord(record, parsed, stats);
+                } catch (error) {
+                    parsed.push({
+                        role: 'system',
+                        kind: 'parse_error',
+                        kindLabel: '解析错误',
+                        timestamp: null,
+                        searchableText: line,
+                        plainText: line,
+                        exportText: line,
+                        html: `<pre>${escapeHtml(`第 ${index + 1} 行解析失败\n\n${line}`)}</pre>`
+                    });
+                }
+            });
+
+            allMessages = parsed;
+            activeFilters = new Set(['all']);
+            syncFilterButtons();
+            updateSessionMeta(lines.length);
+            document.getElementById('userCount').textContent = stats.user;
+            document.getElementById('assistantCount').textContent = stats.assistant;
+            document.getElementById('toolCount').textContent = stats.tool;
+            document.getElementById('totalTokens').textContent = stats.totalTokens ? stats.totalTokens.toLocaleString() : '0';
+
+            statsEl.style.display = 'flex';
+            fileUpload.style.display = 'none';
+            conversation.classList.add('active');
+            renderMessages();
+        }
+
+        function ingestRecord(record, parsed, stats) {
+            const { type, timestamp } = record;
+
+            if (!sessionMeta) {
+                sessionMeta = {
+                    sessionId: record.sessionId || '',
+                    cwd: record.cwd || '',
+                    gitBranch: record.gitBranch || '',
+                    version: record.version || '',
+                    permissionMode: record.permissionMode || ''
+                };
+            } else {
+                sessionMeta.sessionId ||= record.sessionId || '';
+                sessionMeta.cwd ||= record.cwd || '';
+                sessionMeta.gitBranch ||= record.gitBranch || '';
+                sessionMeta.version ||= record.version || '';
+                sessionMeta.permissionMode ||= record.permissionMode || '';
+            }
+
+            if (type === 'user' || type === 'assistant') {
+                ingestMessageRecord(record, parsed, stats);
+                return;
+            }
+
+            if (type === 'system') {
+                parsed.push({
+                    role: 'system',
+                    kind: record.subtype || 'system',
+                    kindLabel: record.subtype || 'system',
+                    timestamp,
+                    searchableText: JSON.stringify(record),
+                    plainText: JSON.stringify(record, null, 2),
+                    exportText: JSON.stringify(record, null, 2),
+                    html: `<pre>${escapeHtml(JSON.stringify(record, null, 2))}</pre>`
+                });
+                return;
+            }
+
+            if (type === 'attachment') {
+                const attachment = record.attachment || {};
+                const summary = attachment.content || JSON.stringify(attachment, null, 2);
+                parsed.push({
+                    role: 'attachment',
+                    kind: attachment.type || 'attachment',
+                    kindLabel: attachment.type || 'attachment',
+                    timestamp,
+                    searchableText: summary,
+                    plainText: summary,
+                    exportText: summary,
+                    html: formatContent(summary)
+                });
+                return;
+            }
+
+            if (type === 'permission-mode' || type === 'file-history-snapshot') {
+                parsed.push({
+                    role: 'meta',
+                    kind: type,
+                    kindLabel: type,
+                    timestamp: timestamp || record.snapshot?.timestamp || null,
+                    searchableText: JSON.stringify(record),
+                    plainText: JSON.stringify(record, null, 2),
+                    exportText: JSON.stringify(record, null, 2),
+                    html: `<pre>${escapeHtml(JSON.stringify(record, null, 2))}</pre>`
+                });
+            }
+        }
+
+        function ingestMessageRecord(record, parsed, stats) {
+            const role = record.type;
+            const message = record.message || {};
+            const content = message.content;
+            const timestamp = record.timestamp;
+            const usage = message.usage || {};
+
+            if (role === 'assistant') {
+                stats.totalTokens += usage.output_tokens || 0;
+            }
+
+            if (typeof content === 'string') {
+                const text = content.trim();
+                if (!text) return;
+                parsed.push(buildTextEntry(role, 'message', '消息', text, timestamp));
+                if (role === 'user') stats.user++;
+                if (role === 'assistant') stats.assistant++;
+                return;
+            }
+
+            if (!Array.isArray(content)) return;
+
+            content.forEach((block) => {
+                if (!block || typeof block !== 'object') return;
+
+                if (block.type === 'text') {
+                    const text = (block.text || '').trim();
+                    if (!text) return;
+                    parsed.push(buildTextEntry(role, 'message', '消息', text, timestamp));
+                    if (role === 'user') stats.user++;
+                    if (role === 'assistant') stats.assistant++;
+                    return;
+                }
+
+                if (block.type === 'tool_use') {
+                    const plainText = [
+                        `Tool: ${block.name || 'unknown'}`,
+                        `ID: ${block.id || ''}`,
+                        '',
+                        JSON.stringify(block.input || {}, null, 2)
+                    ].join('\n');
+                    parsed.push({
+                        role: 'tool',
+                        kind: 'tool_use',
+                        kindLabel: 'tool use',
+                        timestamp,
+                        searchableText: `${block.name || ''} ${JSON.stringify(block.input || {})}`,
+                        plainText,
+                        exportText: plainText,
+                        html: renderToolUse(block)
+                    });
+                    stats.tool++;
+                    return;
+                }
+
+                if (block.type === 'tool_result') {
+                    const resultText = stringifyToolResult(block.content);
+                    const plainText = [
+                        `Tool Result: ${block.tool_use_id || ''}`,
+                        '',
+                        resultText
+                    ].join('\n');
+                    parsed.push({
+                        role: 'tool',
+                        kind: 'tool_result',
+                        kindLabel: 'tool result',
+                        timestamp,
+                        searchableText: `${block.tool_use_id || ''} ${resultText}`,
+                        plainText,
+                        exportText: plainText,
+                        html: renderToolResult(block)
+                    });
+                    stats.tool++;
+                    return;
+                }
+
+                if (block.type === 'image') {
+                    const plainText = '[image block]';
+                    parsed.push({
+                        role: role === 'assistant' ? 'assistant' : 'user',
+                        kind: 'image',
+                        kindLabel: 'image',
+                        timestamp,
+                        searchableText: plainText,
+                        plainText,
+                        exportText: plainText,
+                        html: '<p>[图片内容记录，原文件未内嵌渲染]</p>'
+                    });
+                    if (role === 'user') stats.user++;
+                    if (role === 'assistant') stats.assistant++;
+                    return;
+                }
+
+                const fallback = JSON.stringify(block, null, 2);
+                parsed.push({
+                    role: role === 'assistant' ? 'assistant' : 'user',
+                    kind: block.type || 'block',
+                    kindLabel: block.type || 'block',
+                    timestamp,
+                    searchableText: fallback,
+                    plainText: fallback,
+                    exportText: fallback,
+                    html: `<pre>${escapeHtml(fallback)}</pre>`
+                });
+            });
+        }
+
+        function buildTextEntry(role, kind, kindLabel, text, timestamp) {
+            return {
+                role,
+                kind,
+                kindLabel,
+                timestamp,
+                searchableText: text,
+                plainText: text,
+                exportText: text,
+                html: formatContent(text)
+            };
+        }
+
+        function renderToolUse(block) {
+            const name = escapeHtml(block.name || 'unknown');
+            const id = escapeHtml(block.id || '');
+            const input = escapeHtml(JSON.stringify(block.input || {}, null, 2));
+            return `
+                <div class="tool-title">调用工具: ${name}</div>
+                <div class="kv-grid">
+                    <div class="kv-key">tool_use_id</div>
+                    <div class="kv-value">${id}</div>
+                </div>
+                <div class="tool-call">
+                    <div class="kv-key">input</div>
+                    <pre><code>${input}</code></pre>
+                </div>
+            `;
+        }
+
+        function renderToolResult(block) {
+            const id = escapeHtml(block.tool_use_id || '');
+            const result = escapeHtml(stringifyToolResult(block.content));
+            return `
+                <div class="tool-title">工具结果</div>
+                <div class="kv-grid">
+                    <div class="kv-key">tool_use_id</div>
+                    <div class="kv-value">${id}</div>
+                </div>
+                <div class="tool-call">
+                    <div class="kv-key">content</div>
+                    <pre><code>${result}</code></pre>
+                </div>
+            `;
+        }
+
+        function stringifyToolResult(content) {
+            if (typeof content === 'string') return content;
+            if (Array.isArray(content)) {
+                return content.map(item => typeof item === 'string' ? item : JSON.stringify(item, null, 2)).join('\n\n');
+            }
+            if (content && typeof content === 'object') {
+                return JSON.stringify(content, null, 2);
+            }
+            return String(content ?? '');
+        }
+
+        function updateSessionMeta(lineCount) {
+            if (!sessionMeta) {
+                sessionMetaEl.textContent = `共 ${lineCount} 行记录`;
+                return;
+            }
+            const lines = [
+                `会话: ${(sessionMeta.sessionId || 'N/A').slice(0, 8)}`,
+                sessionMeta.cwd ? `目录: ${sessionMeta.cwd}` : '',
+                sessionMeta.gitBranch ? `分支: ${sessionMeta.gitBranch}` : '',
+                sessionMeta.version ? `版本: ${sessionMeta.version}` : '',
+                sessionMeta.permissionMode ? `权限: ${sessionMeta.permissionMode}` : ''
+            ].filter(Boolean);
+            sessionMetaEl.textContent = lines.join(' | ');
+        }
+
+        function renderMessages() {
+            let filtered = allMessages;
+
+            if (!activeFilters.has('all')) {
+                filtered = filtered.filter(msg => activeFilters.has(msg.role));
+            }
+
+            if (searchQuery) {
+                filtered = filtered.filter(msg =>
+                    (msg.searchableText || '').toLowerCase().includes(searchQuery)
+                );
+            }
+
+            if (!filtered.length) {
+                messagesContainer.innerHTML = '<div class="empty-state">没有匹配的消息</div>';
+                return;
+            }
+
+            messagesContainer.innerHTML = filtered.map((msg, index) => {
+                const time = msg.timestamp ? new Date(msg.timestamp).toLocaleString('zh-CN') : '';
+                const needsCollapse = (msg.plainText || '').length > 1800;
+                return `
+                    <div class="message ${msg.role}" data-index="${index}">
+                        <div class="message-header">
+                            <span class="message-role ${msg.role}">${getRoleLabel(msg.role)}</span>
+                            ${msg.kind && msg.kind !== 'message' ? `<span class="message-kind">${escapeHtml(msg.kindLabel || msg.kind)}</span>` : ''}
+                            ${time ? `<span class="message-time">${time}</span>` : ''}
+                        </div>
+                        <div class="message-content ${needsCollapse ? 'collapsed' : ''}">
+                            ${msg.html}
+                        </div>
+                        ${needsCollapse ? '<button class="expand-btn" onclick="expandMessage(this)">展开全文</button>' : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getRoleLabel(role) {
+            const labels = {
+                user: '用户',
+                assistant: '助手',
+                tool: '工具',
+                system: '系统',
+                attachment: '附件',
+                meta: '元信息'
+            };
+            return labels[role] || role;
+        }
+
+        function formatContent(content) {
+            try {
+                return marked.parse(content);
+            } catch {
+                return `<pre>${escapeHtml(content)}</pre>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function expandMessage(btn) {
+            const content = btn.previousElementSibling;
+            content.classList.remove('collapsed');
+            btn.style.display = 'none';
+        }
+
+        window.expandMessage = expandMessage;
+
+        document.addEventListener('keydown', (e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'f' && conversation.classList.contains('active')) {
+                e.preventDefault();
+                searchInput.focus();
+            }
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                searchInput.value = '';
+                searchQuery = '';
+                searchInput.blur();
+                renderMessages();
+            }
+        });
+    </script>
+</body>
+</html>

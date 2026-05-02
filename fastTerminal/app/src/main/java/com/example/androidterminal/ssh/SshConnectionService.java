@@ -30,8 +30,7 @@ public final class SshConnectionService extends Service {
     private final Runnable sessionMonitor = new Runnable() {
         @Override
         public void run() {
-            SshTerminalSession session = SshSessionRepository.peek();
-            if (session == null || !session.isConnected()) {
+            if (!SshSessionRepository.hasConnectedSessions()) {
                 stopForeground(STOP_FOREGROUND_REMOVE);
                 stopSelf();
                 return;

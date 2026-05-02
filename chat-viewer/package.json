@@ -1,0 +1,32 @@
+{
+  "name": "chat-viewer",
+  "version": "1.0.0",
+  "description": "Claude Code & Codex 对话记录查看器",
+  "repository": "github:Mrhs121/toybox-ai",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build": "electron-builder --mac",
+    "build:dir": "electron-builder --mac --dir"
+  },
+  "build": {
+    "appId": "com.toybox.chat-viewer",
+    "productName": "Chat Viewer",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "icon.png",
+      "target": [
+        "dir",
+        "zip"
+      ]
+    },
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}
