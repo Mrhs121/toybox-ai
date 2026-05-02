@@ -95,6 +95,10 @@ public final class SshTerminalSession extends TerminalOutput {
         return sessionId;
     }
 
+    public SSHClient getSshClient() {
+        return sshClient;
+    }
+
     public void detachUi() {
         listener = null;
         terminalSessionClientProxy.setDelegate(null);

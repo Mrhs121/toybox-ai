@@ -59,6 +59,16 @@
                     android:textColor="@color/text_muted_on_dark"
                     android:textSize="10sp" />
             </LinearLayout>
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/show_file_browser_button"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/open_file_browser"
+                android:padding="5dp"
+                android:src="@drawable/ic_file_browser"
+                android:tint="@null" />
         </LinearLayout>
 
         <LinearLayout
@@ -249,5 +259,12 @@
                 android:textColor="@color/text_muted_on_dark" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <include
+        android:id="@+id/file_browser_panel"
+        layout="@layout/drawer_file_browser"
+        android:layout_width="320dp"
+        android:layout_height="match_parent"
+        android:layout_gravity="end" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

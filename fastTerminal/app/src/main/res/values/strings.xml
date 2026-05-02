@@ -49,4 +49,19 @@
     <string name="ssh_service_text">SSH connection is running in the background.</string>
     <string name="ssh_service_channel_name">SSH session</string>
     <string name="ssh_service_channel_description">Keeps the SSH terminal alive while the app is in the background.</string>
+    <string name="open_file_browser">File Browser</string>
+    <string name="file_browser_empty">No files or not connected</string>
+    <string name="refresh">Refresh</string>
+    <string name="upload">Upload</string>
+    <string name="download">Download</string>
+    <string name="new_folder">New Folder</string>
+    <string name="new_folder_title">New Folder</string>
+    <string name="new_folder_hint">Folder name</string>
+    <string name="rename_title">Rename</string>
+    <string name="rename_hint">New name</string>
+    <string name="delete_confirm_title">Delete?</string>
+    <string name="delete_confirm_message">Are you sure you want to delete \"%s\"?</string>
+    <string name="downloaded_to">Downloaded to %s</string>
+    <string name="uploaded_success">Uploaded successfully</string>
+    <string name="sftp_error">SFTP error: %s</string>
 </resources>

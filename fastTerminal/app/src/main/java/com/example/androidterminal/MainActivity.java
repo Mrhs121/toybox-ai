@@ -3,10 +3,15 @@ package com.example.androidterminal;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.OpenableColumns;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,6 +28,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.view.inputmethod.InputMethodManager;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
@@ -34,12 +41,14 @@ import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 
 import com.example.androidterminal.databinding.ActivityMainBinding;
+import com.example.androidterminal.sftp.SftpManager;
 import com.example.androidterminal.ssh.SshConnectionConfig;
 import com.example.androidterminal.ssh.SshConnectionService;
 import com.example.androidterminal.ssh.SshSessionRepository;
 import com.example.androidterminal.ssh.SshTerminalSession;
 import com.example.androidterminal.terminalview.TerminalView;
 import com.example.androidterminal.terminalview.TerminalViewClient;
+import com.example.androidterminal.ui.FileBrowserDrawer;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
@@ -52,8 +61,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import android.graphics.Typeface;
-
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -85,6 +95,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private boolean altKeyActive = false;
     private View ctrlButton;
     private View altButton;
+    private FileBrowserDrawer fileBrowserDrawer;
+
+    private final ActivityResultLauncher<String> filePickerLauncher =
+        registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+            if (uri != null) {
+                handlePickedFile(uri);
+            }
+        });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,6 +115,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         setupTerminal();
         bindActions();
         setupShortcutBar();
+        setupFileBrowser();
         if (savedConnections.isEmpty()) {
             setConnectionPanelExpanded(true);
         }
@@ -236,7 +255,10 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         });
         binding.showConnectionButton.setOnClickListener(v -> setConnectionPanelExpanded(true));
         binding.newConnectionButton.setOnClickListener(v -> showConnectionEditor(null));
-        binding.newTabButton.setOnClickListener(v -> createNewTab(true));
+        binding.newTabButton.setOnClickListener(v -> {
+            createNewTab(true);
+            setConnectionPanelExpanded(true);
+        });
         binding.drawerLayout.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerClosed(@NonNull View drawerView) {
@@ -273,6 +295,50 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         String[] ctrlCombos = {"Ctrl+C", "Ctrl+D", "Ctrl+Z", "Ctrl+L", "Ctrl+R", "Ctrl+A", "Ctrl+E"};
         for (String key : ctrlCombos) {
             binding.shortcutRow2.addView(createShortcutKeyButton(key, false));
+        }
+    }
+
+    private void setupFileBrowser() {
+        fileBrowserDrawer = new FileBrowserDrawer(this, binding.drawerLayout, binding.fileBrowserPanel.getRoot());
+        fileBrowserDrawer.setUploadCallback(() -> filePickerLauncher.launch("*/*"));
+
+        binding.showFileBrowserButton.setOnClickListener(v -> {
+            SshTerminalSession session = getActiveSession();
+            if (session == null || !session.isConnected()) {
+                toast("Connect to SSH first");
+                return;
+            }
+            fileBrowserDrawer.setSession(session);
+            fileBrowserDrawer.open();
+        });
+    }
+
+    private void handlePickedFile(Uri uri) {
+        try {
+            InputStream inputStream = getContentResolver().openInputStream(uri);
+            if (inputStream == null) return;
+
+            String fileName = "upload";
+            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            if (cursor != null && cursor.moveToFirst()) {
+                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+                if (nameIndex >= 0) fileName = cursor.getString(nameIndex);
+                cursor.close();
+            }
+
+            File cacheFile = new File(getCacheDir(), fileName);
+            FileOutputStream outputStream = new FileOutputStream(cacheFile);
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, bytesRead);
+            }
+            outputStream.close();
+            inputStream.close();
+
+            fileBrowserDrawer.uploadFile(cacheFile);
+        } catch (Exception e) {
+            Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -478,6 +544,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         switch (event.getKeyCode()) {
             case KeyEvent.KEYCODE_T:
                 createNewTab(true);
+                setConnectionPanelExpanded(true);
                 return true;
             case KeyEvent.KEYCODE_W:
                 if (activeSessionId != null) {
@@ -564,6 +631,9 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         sshTerminalSession = session;
         SshSessionRepository.attachUi(session, this, this);
         terminalView.attachSession(session);
+        if (fileBrowserDrawer != null && fileBrowserDrawer.isOpen()) {
+            fileBrowserDrawer.close();
+        }
         syncUiWithActiveSession();
         renderTabs();
         terminalView.requestFocus();
