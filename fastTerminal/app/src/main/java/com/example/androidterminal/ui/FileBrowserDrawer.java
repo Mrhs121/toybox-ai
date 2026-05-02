@@ -207,14 +207,41 @@ public class FileBrowserDrawer {
         File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "fastterminal");
         if (!downloadDir.exists()) downloadDir.mkdirs();
         File localFile = new File(downloadDir, entry.name);
-        Toast.makeText(activity, "Downloading " + entry.name + "...", Toast.LENGTH_SHORT).show();
-        sftpManager.download(session, entry.path, localFile, (result, error) -> {
-            if (error != null) {
-                Toast.makeText(activity, activity.getString(R.string.sftp_error, error.getMessage()), Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(activity, activity.getString(R.string.downloaded_to, result.getAbsolutePath()), Toast.LENGTH_LONG).show();
-            }
-        });
+
+        // Create modern progress dialog
+        android.app.ProgressDialog progressDialog = new android.app.ProgressDialog(activity);
+        progressDialog.setTitle("Downloading");
+        progressDialog.setMessage(entry.name);
+        progressDialog.setProgressStyle(android.app.ProgressDialog.STYLE_HORIZONTAL);
+        progressDialog.setMax(100);
+        progressDialog.setProgress(0);
+        progressDialog.setCancelable(false);
+        progressDialog.show();
+
+        sftpManager.download(session, entry.path, localFile,
+            (bytesTransferred, totalBytes) -> {
+                if (totalBytes > 0) {
+                    int pct = (int) (bytesTransferred * 100 / totalBytes);
+                    progressDialog.setProgress(pct);
+                    String sizeText = formatSize(bytesTransferred) + " / " + formatSize(totalBytes);
+                    progressDialog.setMessage(entry.name + "\n" + sizeText);
+                }
+            },
+            (result, error) -> {
+                progressDialog.dismiss();
+                if (error != null) {
+                    Toast.makeText(activity, activity.getString(R.string.sftp_error, error.getMessage()), Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(activity, activity.getString(R.string.downloaded_to, result.getAbsolutePath()), Toast.LENGTH_LONG).show();
+                }
+            });
+    }
+
+    private static String formatSize(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
+        if (bytes < 1024L * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
+        return String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024));
     }
 
     private void showRenameDialog(FileEntry entry) {

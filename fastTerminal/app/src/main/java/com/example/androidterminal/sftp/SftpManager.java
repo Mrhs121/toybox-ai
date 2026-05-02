@@ -12,7 +12,9 @@ import net.schmizz.sshj.sftp.RemoteResourceInfo;
 import net.schmizz.sshj.sftp.SFTPClient;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -26,6 +28,10 @@ public class SftpManager {
 
     public interface Callback<T> {
         void onResult(T result, Exception error);
+    }
+
+    public interface ProgressCallback {
+        void onProgress(long bytesTransferred, long totalBytes);
     }
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor(r -> {
@@ -119,13 +125,29 @@ public class SftpManager {
         });
     }
 
-    public void download(SshTerminalSession session, String remotePath, File localFile, Callback<File> callback) {
+    public void download(SshTerminalSession session, String remotePath, File localFile, ProgressCallback progress, Callback<File> callback) {
         executor.execute(() -> {
             SFTPClient sftp = null;
             try {
                 sftp = openSftp(session);
                 localFile.getParentFile().mkdirs();
-                sftp.get(remotePath, localFile.getAbsolutePath());
+                FileAttributes attrs = sftp.stat(remotePath);
+                long totalSize = attrs.getSize();
+                net.schmizz.sshj.sftp.RemoteFile rf = sftp.open(remotePath);
+                try (InputStream in = rf.new ReadAheadRemoteFileInputStream(16);
+                     FileOutputStream out = new FileOutputStream(localFile)) {
+                    byte[] buf = new byte[32768];
+                    long transferred = 0;
+                    int n;
+                    while ((n = in.read(buf)) != -1) {
+                        out.write(buf, 0, n);
+                        transferred += n;
+                        final long t = transferred;
+                        if (progress != null) {
+                            mainHandler.post(() -> progress.onProgress(t, totalSize));
+                        }
+                    }
+                }
                 postResult(callback, localFile, null);
             } catch (Exception e) {
                 Log.e(TAG, "download failed", e);
