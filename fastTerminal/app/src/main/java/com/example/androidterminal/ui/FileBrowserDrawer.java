@@ -2,6 +2,7 @@ package com.example.androidterminal.ui;
 
 import android.app.Activity;
 import android.content.Context;
+import android.os.Environment;
 import android.graphics.drawable.Drawable;
 import android.text.InputType;
 import android.view.LayoutInflater;
@@ -198,7 +199,13 @@ public class FileBrowserDrawer {
     }
 
     private void downloadFile(FileEntry entry) {
-        File downloadDir = new File(activity.getExternalFilesDir(null), "downloads");
+        if (android.os.Build.VERSION.SDK_INT >= 23 && activity.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(activity, "Storage permission required. Please grant in Settings.", Toast.LENGTH_LONG).show();
+            activity.requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+            return;
+        }
+        File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "fastterminal");
+        if (!downloadDir.exists()) downloadDir.mkdirs();
         File localFile = new File(downloadDir, entry.name);
         Toast.makeText(activity, "Downloading " + entry.name + "...", Toast.LENGTH_SHORT).show();
         sftpManager.download(session, entry.path, localFile, (result, error) -> {
@@ -298,8 +305,10 @@ public class FileBrowserDrawer {
             FileEntry entry = entries.get(position);
             holder.nameView.setText(entry.name);
             holder.sizeView.setText(entry.getDisplaySize());
+            holder.dateView.setText(entry.getDisplayDate());
             if ("..".equals(entry.name)) {
                 holder.iconView.setImageResource(R.drawable.ic_folder_up);
+                holder.dateView.setText("");
             } else {
                 holder.iconView.setImageResource(entry.isDirectory ? R.drawable.ic_folder : R.drawable.ic_file);
             }
@@ -319,12 +328,14 @@ public class FileBrowserDrawer {
             ImageView iconView;
             TextView nameView;
             TextView sizeView;
+            TextView dateView;
 
             VH(View itemView) {
                 super(itemView);
                 iconView = itemView.findViewById(R.id.file_icon);
                 nameView = itemView.findViewById(R.id.file_name);
                 sizeView = itemView.findViewById(R.id.file_size);
+                dateView = itemView.findViewById(R.id.file_date);
             }
         }
     }

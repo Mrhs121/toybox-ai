@@ -97,10 +97,16 @@
         <com.google.android.material.bottomnavigation.BottomNavigationView
             android:id="@+id/bottom_navigation"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="54dp"
             android:background="@color/top_bar_surface"
+            android:paddingBottom="4dp"
             app:itemIconTint="@color/bottom_nav_color"
             app:itemTextColor="@color/bottom_nav_color"
+            app:labelVisibilityMode="labeled"
+            app:itemTextAppearanceActive="@style/BottomNavText"
+            app:itemTextAppearanceInactive="@style/BottomNavText"
+            app:itemPaddingTop="2dp"
+            app:itemPaddingBottom="0dp"
             app:menu="@menu/bottom_nav_menu" />
     </LinearLayout>
 

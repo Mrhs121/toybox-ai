@@ -5,32 +5,44 @@
     android:background="?attr/selectableItemBackground"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="16dp">
+    android:paddingStart="12dp"
+    android:paddingEnd="12dp">
 
     <ImageView
         android:id="@+id/file_icon"
-        android:layout_width="20dp"
-        android:layout_height="20dp"
+        android:layout_width="18dp"
+        android:layout_height="18dp"
         android:src="@drawable/ic_file" />
 
     <TextView
         android:id="@+id/file_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="8dp"
         android:layout_weight="1"
         android:ellipsize="middle"
         android:singleLine="true"
         android:textColor="@color/text_on_dark"
-        android:textSize="14sp" />
+        android:textSize="13sp" />
 
     <TextView
         android:id="@+id/file_size"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="6dp"
         android:textColor="@color/text_muted_on_dark"
-        android:textSize="12sp" />
+        android:textSize="11sp"
+        android:minWidth="48dp"
+        android:gravity="end" />
+
+    <TextView
+        android:id="@+id/file_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:textColor="@color/text_muted_on_dark"
+        android:textSize="11sp"
+        android:minWidth="72dp"
+        android:gravity="end" />
 
 </LinearLayout>
