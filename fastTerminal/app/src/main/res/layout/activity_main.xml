@@ -6,64 +6,45 @@
     android:layout_height="match_parent"
     android:background="@color/terminal_background">
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@color/terminal_background"
-        android:fitsSystemWindows="true">
+        android:fitsSystemWindows="true"
+        android:orientation="vertical">
 
         <LinearLayout
             android:id="@+id/top_bar"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@color/top_bar_surface"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="6dp"
-            android:paddingEnd="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent">
+            android:paddingStart="14dp"
+            android:paddingEnd="8dp">
 
-            <androidx.appcompat.widget.AppCompatImageButton
-                android:id="@+id/show_connection_button"
-                android:layout_width="34dp"
-                android:layout_height="34dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/open_connection_panel"
-                android:padding="5dp"
-                android:src="@drawable/ic_menu_panel"
-                android:tint="@null" />
-
-            <LinearLayout
+            <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:orientation="vertical">
+                android:text="@string/app_name"
+                android:textColor="@color/text_on_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/app_name"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <TextView
-                    android:id="@+id/status_text"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="1dp"
-                    android:text="@string/status_idle"
-                    android:textColor="@color/text_muted_on_dark"
-                    android:textSize="10sp" />
-            </LinearLayout>
+            <TextView
+                android:id="@+id/status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/status_idle"
+                android:textColor="@color/text_muted_on_dark"
+                android:textSize="10sp" />
 
             <androidx.appcompat.widget.AppCompatImageButton
                 android:id="@+id/show_file_browser_button"
                 android:layout_width="34dp"
                 android:layout_height="34dp"
+                android:layout_marginStart="12dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/open_file_browser"
                 android:padding="5dp"
@@ -71,194 +52,57 @@
                 android:tint="@null" />
         </LinearLayout>
 
-        <LinearLayout
-            android:id="@+id/tab_bar"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:background="@color/tab_bar_surface"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/top_bar">
-
-            <HorizontalScrollView
-                android:layout_width="0dp"
-                android:layout_height="match_parent"
-                android:layout_weight="1"
-                android:fillViewport="false"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:id="@+id/tabs_container"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/new_tab_button"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:contentDescription="@string/new_tab_description"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:minWidth="0dp"
-                android:text="@string/new_tab_action"
-                android:textColor="@color/text_muted_on_dark" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/shortcut_bar"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:background="@color/tab_bar_surface"
-            android:orientation="vertical"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent">
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:id="@+id/shortcut_row_1"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
-
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:id="@+id/shortcut_row_2"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal" />
-            </HorizontalScrollView>
-        </LinearLayout>
-
         <FrameLayout
-            android:id="@+id/terminal_container"
-            android:layout_width="0dp"
+            android:id="@+id/content_area"
+            android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:background="@color/terminal_background"
-            app:layout_constraintBottom_toTopOf="@id/shortcut_bar"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tab_bar" />
-    </androidx.constraintlayout.widget.ConstraintLayout>
+            android:layout_weight="1">
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/connection_panel"
-        android:layout_width="312dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="start"
-        android:background="@color/drawer_surface"
-        android:fillViewport="true"
-        android:fitsSystemWindows="true">
+            <include
+                android:id="@+id/panel_home"
+                layout="@layout/panel_home"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="visible" />
 
-        <LinearLayout
+            <include
+                android:id="@+id/panel_terminal"
+                layout="@layout/panel_terminal"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+            <include
+                android:id="@+id/panel_settings"
+                layout="@layout/panel_settings"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+            <include
+                android:id="@+id/panel_keys"
+                layout="@layout/panel_keys"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+
+            <include
+                android:id="@+id/panel_about"
+                layout="@layout/panel_about"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:visibility="gone" />
+        </FrameLayout>
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottom_navigation"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="20dp"
-            android:paddingTop="22dp"
-            android:paddingEnd="20dp"
-            android:paddingBottom="20dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/connection_title"
-                android:textColor="@color/text_on_dark"
-                android:textSize="22sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:text="@string/connection_subtitle"
-                android:textColor="@color/text_muted_on_dark"
-                android:textSize="12sp" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="22dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/saved_connection_section"
-                    android:textAllCaps="true"
-                    android:textColor="@color/text_muted_on_dark"
-                    android:textSize="11sp"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/new_connection_button"
-                    style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="36dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    android:minWidth="0dp"
-                    android:text="@string/new_connection_action"
-                    android:textColor="@color/text_muted_on_dark" />
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/saved_connections_empty"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:text="@string/saved_connections_empty"
-                android:textColor="@color/text_muted_on_dark"
-                android:textSize="12sp" />
-
-            <LinearLayout
-                android:id="@+id/saved_connections_container"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="12dp"
-                android:orientation="vertical" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/drawer_disconnect_button"
-                style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:layout_marginTop="14dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="@string/disconnect_action"
-                android:textColor="@color/text_muted_on_dark" />
-        </LinearLayout>
-    </androidx.core.widget.NestedScrollView>
+            android:background="@color/top_bar_surface"
+            app:itemIconTint="@color/bottom_nav_color"
+            app:itemTextColor="@color/bottom_nav_color"
+            app:menu="@menu/bottom_nav_menu" />
+    </LinearLayout>
 
     <include
         android:id="@+id/file_browser_panel"

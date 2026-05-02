@@ -169,7 +169,18 @@ public final class SshTerminalSession extends TerminalOutput {
             SSHClient client = new SSHClient();
             client.addHostKeyVerifier(new PromiscuousVerifier());
             client.connect(config.getHost(), config.getPort());
-            client.authPassword(config.getUsername(), config.getPassword());
+            if (config.getAuthType() == SshConnectionConfig.AuthType.KEY
+                && config.getPrivateKeyPath() != null) {
+                String passphrase = config.getPassphrase();
+                if (passphrase != null && !passphrase.isEmpty()) {
+                    client.authPublickey(config.getUsername(),
+                        client.loadKeys(config.getPrivateKeyPath(), passphrase.toCharArray()));
+                } else {
+                    client.authPublickey(config.getUsername(), config.getPrivateKeyPath());
+                }
+            } else {
+                client.authPassword(config.getUsername(), config.getPassword());
+            }
 
             Session session = client.startSession();
             session.allocatePTY("xterm-256color", columns, rows, 0, 0, Collections.emptyMap());

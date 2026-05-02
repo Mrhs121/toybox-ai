@@ -75,4 +75,5 @@ dependencies {
     implementation("org.bouncycastle:bcpkix-jdk18on:1.77")
     implementation("org.bouncycastle:bcutil-jdk18on:1.77")
     implementation("com.termux.termux-app:terminal-emulator:0.118.0")
+    implementation("com.google.android.flexbox:flexbox:3.0.0")
 }

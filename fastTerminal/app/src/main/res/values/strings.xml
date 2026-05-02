@@ -49,6 +49,11 @@
     <string name="ssh_service_text">SSH connection is running in the background.</string>
     <string name="ssh_service_channel_name">SSH session</string>
     <string name="ssh_service_channel_description">Keeps the SSH terminal alive while the app is in the background.</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_terminal">Terminal</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_keys">Keys</string>
+    <string name="nav_about">About</string>
     <string name="open_file_browser">File Browser</string>
     <string name="file_browser_empty">No files or not connected</string>
     <string name="refresh">Refresh</string>
@@ -64,4 +69,17 @@
     <string name="downloaded_to">Downloaded to %s</string>
     <string name="uploaded_success">Uploaded successfully</string>
     <string name="sftp_error">SFTP error: %s</string>
+    <string name="recent_connections">Recent Connections</string>
+    <string name="saved_connections_title">Saved Connections</string>
+    <string name="no_recent_connections">No recent connections</string>
+    <string name="ssh_keys_title">SSH Keys</string>
+    <string name="import_key">Import Key</string>
+    <string name="no_keys">No SSH keys imported</string>
+    <string name="key_imported">Key imported successfully</string>
+    <string name="key_deleted">Key deleted</string>
+    <string name="about_version">Version</string>
+    <string name="about_dependencies">Dependencies</string>
+    <string name="about_licenses">Licenses</string>
+    <string name="connection_picker_title">Select Connection</string>
+    <string name="new_connection_option">+ New Connection</string>
 </resources>

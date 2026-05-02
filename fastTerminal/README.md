@@ -4,9 +4,14 @@ FastTerminal is an Android SSH terminal focused on external keyboard and mouse u
 
 Current highlights:
 
+- Bottom navigation with Home, Terminal, Settings, Keys, About panels.
+- Home panel shows recent and saved connections as compact chips — tap to connect.
+- Multi-tab terminal with `Ctrl+T/W/Left/Right` shortcuts.
 - Physical `Esc` is always sent to the terminal and will not trigger Android back/exit.
 - Mouse left drag selects terminal text; right click shows paste near the pointer.
-- Multiple SSH connections can be saved locally, edited, deleted, and connected from the side drawer.
+- Multiple SSH connections can be saved locally, edited, deleted, and connected.
+- SFTP file browser with upload, download, and folder management.
+- Nerd Font (JetBrainsMono) bundled for icon rendering.
 - SSH sessions stay alive when the app goes to the background through a foreground service.
 - The terminal UI is optimized for tablet / desktop-style Android use.
 
