@@ -199,9 +199,20 @@ public class FileBrowserDrawer {
     }
 
     private void downloadFile(FileEntry entry) {
-        if (android.os.Build.VERSION.SDK_INT >= 23 && activity.checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(activity, "Storage permission required. Please grant in Settings.", Toast.LENGTH_LONG).show();
-            activity.requestPermissions(new String[]{android.Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1001);
+        if (android.os.Build.VERSION.SDK_INT >= 30 && !android.os.Environment.isExternalStorageManager()) {
+            new android.app.AlertDialog.Builder(activity)
+                .setTitle("需要存储权限")
+                .setMessage("请在应用详情页开启「读写手机存储」权限，以保存文件到 Downloads/fastterminal 目录。")
+                .setPositiveButton("去设置", (d, w) -> {
+                    try {
+                        activity.startActivity(new android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            android.net.Uri.parse("package:" + activity.getPackageName())));
+                    } catch (Exception e) {
+                        activity.startActivity(new android.content.Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
             return;
         }
         File downloadDir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "fastterminal");
