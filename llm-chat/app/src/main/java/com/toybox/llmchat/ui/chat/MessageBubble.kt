@@ -1,9 +1,7 @@
 package com.toybox.llmchat.ui.chat
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
@@ -14,8 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.*
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.toybox.llmchat.data.model.ChatMessage
 import com.toybox.llmchat.data.model.Role
 
@@ -24,7 +26,6 @@ fun MessageBubble(message: ChatMessage) {
     val isUser = message.role == Role.USER
 
     if (isUser) {
-        // User message: blue bubble, right aligned
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -47,25 +48,198 @@ fun MessageBubble(message: ChatMessage) {
             }
         }
     } else {
-        // AI message: no bubble, plain text with action bar
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
         ) {
             SelectionContainer {
-                Text(
-                    text = message.content.ifEmpty { "..." },
-                    color = MaterialTheme.colorScheme.onBackground,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                MarkdownText(text = message.content.ifEmpty { "..." })
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Action bar
             MessageActionBar(message = message)
         }
+    }
+}
+
+@Composable
+private fun MarkdownText(text: String) {
+    val paragraphs = text.split("\n\n")
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        paragraphs.forEach { paragraph ->
+            val trimmed = paragraph.trim()
+            when {
+                trimmed.startsWith("```") -> {
+                    val code = trimmed.removePrefix("```").removeSuffix("```").trim()
+                    val firstLine = code.lines().firstOrNull() ?: ""
+                    val lang = if (firstLine.length in 1..20 && firstLine.all { it.isLetter() || it == '+' || it == '#' }) firstLine else ""
+                    val codeContent = if (lang.isNotEmpty() && code.startsWith(lang)) {
+                        code.removePrefix(lang).trimStart('\n')
+                    } else {
+                        code
+                    }
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            if (lang.isNotEmpty()) {
+                                Text(
+                                    text = lang,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                            }
+                            Text(
+                                text = codeContent,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+                trimmed.startsWith("### ") -> {
+                    StyledMarkdownText(
+                        text = trimmed.removePrefix("### "),
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                trimmed.startsWith("## ") -> {
+                    StyledMarkdownText(
+                        text = trimmed.removePrefix("## "),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                trimmed.startsWith("# ") -> {
+                    StyledMarkdownText(
+                        text = trimmed.removePrefix("# "),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                    )
+                }
+                trimmed.startsWith("- ") || trimmed.startsWith("* ") -> {
+                    val items = trimmed.lines().map { it.removePrefix("- ").removePrefix("* ").trim() }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        items.forEach { item ->
+                            Row {
+                                Text(
+                                    text = "• ",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                StyledMarkdownText(text = item)
+                            }
+                        }
+                    }
+                }
+                trimmed.matches(Regex("^\\d+\\.\\s.*")) -> {
+                    val items = trimmed.lines().map { it.replace(Regex("^\\d+\\.\\s"), "").trim() }
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        items.forEachIndexed { index, item ->
+                            Row {
+                                Text(
+                                    text = "${index + 1}. ",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                                StyledMarkdownText(text = item)
+                            }
+                        }
+                    }
+                }
+                else -> {
+                    StyledMarkdownText(text = trimmed)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StyledMarkdownText(
+    text: String,
+    style: TextStyle = MaterialTheme.typography.bodyLarge
+) {
+    val annotatedString = buildAnnotatedString {
+        var remaining = text
+        while (remaining.isNotEmpty()) {
+            // Inline code `...`
+            val codeStart = remaining.indexOf('`')
+            if (codeStart >= 0) {
+                val codeEnd = remaining.indexOf('`', codeStart + 1)
+                if (codeEnd > codeStart) {
+                    if (codeStart > 0) {
+                        appendInlineStyles(remaining.substring(0, codeStart))
+                    }
+                    pushStyle(SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        fontSize = 13.sp,
+                        background = MaterialTheme.colorScheme.surfaceContainerHigh,
+                        color = MaterialTheme.colorScheme.onSurface
+                    ))
+                    append(remaining.substring(codeStart + 1, codeEnd))
+                    pop()
+                    remaining = remaining.substring(codeEnd + 1)
+                    continue
+                }
+            }
+            appendInlineStyles(remaining)
+            break
+        }
+    }
+
+    Text(
+        text = annotatedString,
+        style = style,
+        color = MaterialTheme.colorScheme.onBackground
+    )
+}
+
+private fun AnnotatedString.Builder.appendInlineStyles(text: String) {
+    var remaining = text
+    while (remaining.isNotEmpty()) {
+        // Bold **...** or __...__
+        val boldStart = remaining.indexOf("**").takeIf { it >= 0 }
+            ?: remaining.indexOf("__").takeIf { it >= 0 }
+        if (boldStart != null) {
+            val delimiter = remaining.substring(boldStart, boldStart + 2)
+            val boldEnd = remaining.indexOf(delimiter, boldStart + 2)
+            if (boldEnd > boldStart) {
+                if (boldStart > 0) {
+                    append(remaining.substring(0, boldStart))
+                }
+                pushStyle(SpanStyle(fontWeight = FontWeight.Bold))
+                append(remaining.substring(boldStart + 2, boldEnd))
+                pop()
+                remaining = remaining.substring(boldEnd + 2)
+                continue
+            }
+        }
+        // Italic *...* (single *, not **)
+        val italicStart = remaining.indexOf("*").takeIf { it >= 0 }
+        if (italicStart != null && italicStart + 1 < remaining.length && remaining[italicStart + 1] != '*') {
+            val italicEnd = remaining.indexOf("*", italicStart + 1)
+            if (italicEnd > italicStart) {
+                if (italicStart > 0) {
+                    append(remaining.substring(0, italicStart))
+                }
+                pushStyle(SpanStyle(fontStyle = FontStyle.Italic))
+                append(remaining.substring(italicStart + 1, italicEnd))
+                pop()
+                remaining = remaining.substring(italicEnd + 1)
+                continue
+            }
+        }
+        // No more inline styles
+        append(remaining)
+        break
     }
 }
 
@@ -77,7 +251,6 @@ private fun MessageActionBar(message: ChatMessage) {
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Copy
         IconButton(
             onClick = { clipboard.setText(AnnotatedString(message.content)) },
             modifier = Modifier.size(32.dp)
@@ -89,7 +262,6 @@ private fun MessageActionBar(message: ChatMessage) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        // Like
         IconButton(
             onClick = { },
             modifier = Modifier.size(32.dp)
@@ -101,7 +273,6 @@ private fun MessageActionBar(message: ChatMessage) {
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        // Dislike
         IconButton(
             onClick = { },
             modifier = Modifier.size(32.dp)

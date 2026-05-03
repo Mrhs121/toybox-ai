@@ -8,7 +8,6 @@ import com.toybox.llmchat.data.remote.LlmApiService
 import com.toybox.llmchat.data.repository.ChatRepository
 import com.toybox.llmchat.data.repository.ConfigRepository
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -37,17 +36,24 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
-    // Cache current conversation to avoid linear search on every streaming chunk
+    // In-progress streaming message (not yet persisted to DataStore)
+    private val _streamingMessage = MutableStateFlow<ChatMessage?>(null)
+
     private var cachedConversation: Conversation? = null
     private var streamingJob: Job? = null
-    private var pendingPersistJob: Job? = null
 
+    // Combine persisted messages + streaming message for real-time UI updates
     val currentMessages: StateFlow<List<ChatMessage>> = combine(
-        conversations, _currentConversationId
-    ) { convos, id ->
+        conversations, _currentConversationId, _streamingMessage
+    ) { convos, id, streaming ->
         val convo = convos.find { it.id == id }
         cachedConversation = convo
-        convo?.messages ?: emptyList()
+        val persisted = convo?.messages ?: emptyList()
+        if (streaming != null) {
+            persisted + streaming
+        } else {
+            persisted
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -125,44 +131,37 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             cachedConversation = updatedConvo
 
             val assistantMsgId = UUID.randomUUID().toString()
-            val assistantMsg = ChatMessage(
-                id = assistantMsgId,
-                role = Role.ASSISTANT,
-                content = "",
-                timestamp = System.currentTimeMillis()
-            )
-            val convoWithAssistant = updatedConvo.copy(
-                messages = updatedMessages + assistantMsg,
-                updatedAt = System.currentTimeMillis()
-            )
-            chatRepo.upsert(convoWithAssistant)
-            cachedConversation = convoWithAssistant
 
             try {
-                // Batch persist: accumulate chunks and write to DataStore every 500ms
-                var pendingConversation = convoWithAssistant
-                var hasPendingChanges = false
+                // Stream: update _streamingMessage for real-time UI, persist only at the end
+                var streamedContent = ""
 
                 apiService.streamChat(config, updatedMessages).collect { chunk ->
-                    val msgs = pendingConversation.messages.toMutableList()
-                    val idx = msgs.indexOfFirst { it.id == assistantMsgId }
-                    if (idx >= 0) {
-                        msgs[idx] = msgs[idx].copy(content = msgs[idx].content + chunk)
-                        pendingConversation = pendingConversation.copy(
-                            messages = msgs,
-                            updatedAt = System.currentTimeMillis()
-                        )
-                        cachedConversation = pendingConversation
-                        hasPendingChanges = true
-                    }
+                    streamedContent += chunk
+                    _streamingMessage.value = ChatMessage(
+                        id = assistantMsgId,
+                        role = Role.ASSISTANT,
+                        content = streamedContent,
+                        timestamp = System.currentTimeMillis()
+                    )
                 }
 
-                // Final persist
-                if (hasPendingChanges) {
-                    chatRepo.upsert(pendingConversation)
-                }
+                // Persist final message to DataStore
+                val finalMsg = ChatMessage(
+                    id = assistantMsgId,
+                    role = Role.ASSISTANT,
+                    content = streamedContent,
+                    timestamp = System.currentTimeMillis()
+                )
+                val finalConvo = updatedConvo.copy(
+                    messages = updatedMessages + finalMsg,
+                    updatedAt = System.currentTimeMillis()
+                )
+                chatRepo.upsert(finalConvo)
+                cachedConversation = finalConvo
             } catch (e: Exception) {
                 _error.value = e.message ?: "请求失败"
+                // Remove empty assistant message on error
                 val convo = cachedConversation
                 if (convo != null) {
                     val msgs = convo.messages.filterNot { it.id == assistantMsgId && it.content.isEmpty() }
@@ -171,6 +170,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     cachedConversation = cleaned
                 }
             } finally {
+                _streamingMessage.value = null
                 _isGenerating.value = false
                 streamingJob = null
             }
@@ -180,6 +180,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun cancelStreaming() {
         streamingJob?.cancel()
         streamingJob = null
+        _streamingMessage.value = null
     }
 
     fun clearError() {
