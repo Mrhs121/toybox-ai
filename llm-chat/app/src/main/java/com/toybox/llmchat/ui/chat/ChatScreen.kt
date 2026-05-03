@@ -1,6 +1,14 @@
 package com.toybox.llmchat.ui.chat
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,6 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -17,13 +27,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.toybox.llmchat.ui.history.HistoryDrawer
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,10 +55,19 @@ fun ChatScreen(
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+    var lastMessageCount by remember { mutableIntStateOf(0) }
 
+    // Auto-scroll: animated for new messages, instant for streaming updates
     LaunchedEffect(currentMessages.size, currentMessages.lastOrNull()?.content?.length) {
         if (currentMessages.isNotEmpty()) {
-            listState.animateScrollToItem(0)
+            if (currentMessages.size > lastMessageCount) {
+                // New message arrived - animate
+                listState.animateScrollToItem(0)
+            } else {
+                // Streaming content update - instant scroll, no animation
+                listState.scrollToItem(0)
+            }
+            lastMessageCount = currentMessages.size
         }
     }
 
@@ -119,7 +138,12 @@ fun ChatScreen(
                     .padding(padding)
                     .imePadding()
             ) {
-                error?.let { msg ->
+                // Error banner with smooth animation
+                AnimatedVisibility(
+                    visible = error != null,
+                    enter = expandVertically(tween(200)) + fadeIn(tween(200)),
+                    exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
+                ) {
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
                         modifier = Modifier.fillMaxWidth()
@@ -129,7 +153,7 @@ fun ChatScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = msg,
+                                text = error ?: "",
                                 color = MaterialTheme.colorScheme.onErrorContainer,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.weight(1f)
@@ -206,6 +230,13 @@ fun ChatScreen(
                                         textStyle = MaterialTheme.typography.bodyLarge.copy(
                                             color = MaterialTheme.colorScheme.onSurface
                                         ),
+                                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                        keyboardActions = KeyboardActions(onSend = {
+                                            if (inputText.isNotBlank() && !isGenerating) {
+                                                viewModel.sendMessage(inputText)
+                                                inputText = ""
+                                            }
+                                        }),
                                         decorationBox = { innerTextField ->
                                             Box {
                                                 if (inputText.isEmpty()) {
@@ -235,18 +266,24 @@ fun ChatScreen(
                                             disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                         )
                                     ) {
-                                        if (isGenerating) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(18.dp),
-                                                strokeWidth = 2.dp,
-                                                color = MaterialTheme.colorScheme.onPrimary
-                                            )
-                                        } else {
-                                            Icon(
-                                                Icons.AutoMirrored.Filled.Send,
-                                                contentDescription = "发送",
-                                                modifier = Modifier.size(18.dp)
-                                            )
+                                        AnimatedContent(
+                                            targetState = isGenerating,
+                                            transitionSpec = { fadeIn(tween(150)) togetherWith fadeOut(tween(150)) },
+                                            label = "send_button"
+                                        ) { generating ->
+                                            if (generating) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(18.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            } else {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.Send,
+                                                    contentDescription = "发送",
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
                                         }
                                     }
                                 }

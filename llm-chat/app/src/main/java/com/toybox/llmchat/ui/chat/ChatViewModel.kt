@@ -7,6 +7,8 @@ import com.toybox.llmchat.data.model.*
 import com.toybox.llmchat.data.remote.LlmApiService
 import com.toybox.llmchat.data.repository.ChatRepository
 import com.toybox.llmchat.data.repository.ConfigRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -35,10 +37,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error
 
+    // Cache current conversation to avoid linear search on every streaming chunk
+    private var cachedConversation: Conversation? = null
+    private var streamingJob: Job? = null
+    private var pendingPersistJob: Job? = null
+
     val currentMessages: StateFlow<List<ChatMessage>> = combine(
         conversations, _currentConversationId
     ) { convos, id ->
-        convos.find { it.id == id }?.messages ?: emptyList()
+        val convo = convos.find { it.id == id }
+        cachedConversation = convo
+        convo?.messages ?: emptyList()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     init {
@@ -47,7 +56,6 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (_selectedConfig.value == null && list.isNotEmpty()) {
                     _selectedConfig.value = list.first()
                 }
-                // Remove selection if config was deleted
                 if (_selectedConfig.value != null && list.none { it.id == _selectedConfig.value!!.id }) {
                     _selectedConfig.value = list.firstOrNull()
                 }
@@ -60,14 +68,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun newConversation() {
+        cancelStreaming()
         _currentConversationId.value = null
     }
 
     fun selectConversation(id: String) {
+        cancelStreaming()
         _currentConversationId.value = id
     }
 
     fun deleteConversation(id: String) {
+        cancelStreaming()
         viewModelScope.launch {
             chatRepo.delete(id)
             if (_currentConversationId.value == id) {
@@ -83,23 +94,23 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
         if (content.isBlank() || _isGenerating.value) return
 
-        viewModelScope.launch {
+        cancelStreaming()
+
+        streamingJob = viewModelScope.launch {
             _isGenerating.value = true
             _error.value = null
 
-            // Get or create conversation
             val convId = _currentConversationId.value ?: UUID.randomUUID().toString().also {
                 _currentConversationId.value = it
             }
 
-            // Add user message
             val userMsg = ChatMessage(
                 id = UUID.randomUUID().toString(),
                 role = Role.USER,
                 content = content
             )
 
-            val currentConvo = conversations.value.find { it.id == convId }
+            val currentConvo = cachedConversation
             val title = currentConvo?.title ?: content.take(50)
             val updatedMessages = (currentConvo?.messages ?: emptyList()) + userMsg
 
@@ -111,8 +122,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 updatedAt = System.currentTimeMillis()
             )
             chatRepo.upsert(updatedConvo)
+            cachedConversation = updatedConvo
 
-            // Stream response
             val assistantMsgId = UUID.randomUUID().toString()
             val assistantMsg = ChatMessage(
                 id = assistantMsgId,
@@ -120,33 +131,55 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 content = "",
                 timestamp = System.currentTimeMillis()
             )
-            chatRepo.upsert(updatedConvo.copy(
+            val convoWithAssistant = updatedConvo.copy(
                 messages = updatedMessages + assistantMsg,
                 updatedAt = System.currentTimeMillis()
-            ))
+            )
+            chatRepo.upsert(convoWithAssistant)
+            cachedConversation = convoWithAssistant
 
             try {
+                // Batch persist: accumulate chunks and write to DataStore every 500ms
+                var pendingConversation = convoWithAssistant
+                var hasPendingChanges = false
+
                 apiService.streamChat(config, updatedMessages).collect { chunk ->
-                    val convo = conversations.value.find { it.id == convId } ?: return@collect
-                    val msgs = convo.messages.toMutableList()
+                    val msgs = pendingConversation.messages.toMutableList()
                     val idx = msgs.indexOfFirst { it.id == assistantMsgId }
                     if (idx >= 0) {
                         msgs[idx] = msgs[idx].copy(content = msgs[idx].content + chunk)
-                        chatRepo.upsert(convo.copy(messages = msgs, updatedAt = System.currentTimeMillis()))
+                        pendingConversation = pendingConversation.copy(
+                            messages = msgs,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                        cachedConversation = pendingConversation
+                        hasPendingChanges = true
                     }
+                }
+
+                // Final persist
+                if (hasPendingChanges) {
+                    chatRepo.upsert(pendingConversation)
                 }
             } catch (e: Exception) {
                 _error.value = e.message ?: "请求失败"
-                // Remove empty assistant message on error
-                val convo = conversations.value.find { it.id == convId }
+                val convo = cachedConversation
                 if (convo != null) {
                     val msgs = convo.messages.filterNot { it.id == assistantMsgId && it.content.isEmpty() }
-                    chatRepo.upsert(convo.copy(messages = msgs))
+                    val cleaned = convo.copy(messages = msgs)
+                    chatRepo.upsert(cleaned)
+                    cachedConversation = cleaned
                 }
             } finally {
                 _isGenerating.value = false
+                streamingJob = null
             }
         }
+    }
+
+    private fun cancelStreaming() {
+        streamingJob?.cancel()
+        streamingJob = null
     }
 
     fun clearError() {
