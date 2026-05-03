@@ -10,7 +10,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
@@ -22,9 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.toybox.llmchat.ui.history.HistoryDrawer
 import kotlinx.coroutines.launch
@@ -47,28 +44,17 @@ fun ChatScreen(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+    val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
 
-    // Auto-scroll when new messages arrive or content changes (streaming)
     LaunchedEffect(currentMessages.size, currentMessages.lastOrNull()?.content?.length) {
         if (currentMessages.isNotEmpty()) {
-            listState.animateScrollToItem(currentMessages.size - 1)
+            listState.animateScrollToItem(0)
         }
     }
 
-    // Auto-scroll when keyboard appears
-    val view = LocalView.current
-    LaunchedEffect(view) {
-        var wasKeyboardVisible = false
-        view.viewTreeObserver.addOnGlobalLayoutListener {
-            val insets = view.rootWindowInsets
-            val imeVisible = insets?.isVisible(WindowInsetsCompat.Type.ime()) == true
-            if (imeVisible && !wasKeyboardVisible && currentMessages.isNotEmpty()) {
-                scope.launch {
-                    kotlinx.coroutines.delay(100)
-                    listState.animateScrollToItem(currentMessages.size - 1)
-                }
-            }
-            wasKeyboardVisible = imeVisible
+    LaunchedEffect(imeBottom) {
+        if (imeBottom > 0 && currentMessages.isNotEmpty()) {
+            listState.scrollToItem(0)
         }
     }
 
@@ -133,7 +119,6 @@ fun ChatScreen(
                     .padding(padding)
                     .imePadding()
             ) {
-                // Error banner
                 error?.let { msg ->
                     Surface(
                         color = MaterialTheme.colorScheme.errorContainer,
@@ -161,12 +146,12 @@ fun ChatScreen(
                     }
                 }
 
-                // Messages
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     state = listState,
+                    reverseLayout = true,
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     if (currentMessages.isEmpty()) {
@@ -174,12 +159,11 @@ fun ChatScreen(
                             EmptyStateView(configs = configs)
                         }
                     }
-                    items(currentMessages, key = { it.id }) { message ->
+                    items(currentMessages.asReversed(), key = { it.id }) { message ->
                         MessageBubble(message = message)
                     }
                 }
 
-                // Bottom input area
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     modifier = Modifier.fillMaxWidth()
@@ -187,13 +171,11 @@ fun ChatScreen(
                     Column(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
-                        // Input row
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // Voice button
                             IconButton(
                                 onClick = { },
                                 modifier = Modifier.size(40.dp)
@@ -205,7 +187,6 @@ fun ChatScreen(
                                 )
                             }
 
-                            // Input field
                             Surface(
                                 shape = RoundedCornerShape(24.dp),
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -239,7 +220,6 @@ fun ChatScreen(
                                         }
                                     )
 
-                                    // Send button
                                     FilledIconButton(
                                         onClick = {
                                             viewModel.sendMessage(inputText)
@@ -272,7 +252,6 @@ fun ChatScreen(
                                 }
                             }
 
-                            // Attachment button
                             IconButton(
                                 onClick = { },
                                 modifier = Modifier.size(40.dp)
@@ -287,7 +266,6 @@ fun ChatScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // Quick action tags
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
