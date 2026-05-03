@@ -1,16 +1,22 @@
 package com.toybox.llmchat.ui.chat
 
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.provider.OpenableColumns
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -27,16 +33,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.toybox.llmchat.data.model.Attachment
+import com.toybox.llmchat.data.model.AttachmentType
 import com.toybox.llmchat.ui.history.HistoryDrawer
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ChatScreen(
     onNavigateToSettings: () -> Unit,
@@ -51,28 +64,64 @@ fun ChatScreen(
     val currentConvId by viewModel.currentConversationId.collectAsState()
 
     var inputText by remember { mutableStateOf("") }
+    var pendingAttachments by remember { mutableStateOf<List<Attachment>>(emptyList()) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val listState = rememberLazyListState()
-    val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+    val imeVisible = WindowInsets.isImeVisible
     var lastMessageCount by remember { mutableIntStateOf(0) }
 
-    // Auto-scroll: animated for new messages, instant for streaming updates
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) scope.launch {
+            val attachment = withContext(Dispatchers.IO) {
+                val mimeType = context.contentResolver.getType(uri) ?: "application/octet-stream"
+                val isImage = mimeType.startsWith("image/")
+                val fileName = getFileName(context, uri)
+
+                val file = java.io.File(context.filesDir, "attachments/${UUID.randomUUID()}_$fileName")
+                file.parentFile?.mkdirs()
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    file.outputStream().use { output -> input.copyTo(output) }
+                }
+                if (!file.exists()) return@withContext null
+
+                Attachment(
+                    fileName = fileName,
+                    mimeType = mimeType,
+                    filePath = file.absolutePath,
+                    type = if (isImage) AttachmentType.IMAGE else AttachmentType.FILE
+                )
+            }
+            if (attachment != null) {
+                pendingAttachments = pendingAttachments + attachment
+            }
+        }
+    }
+
+    fun send() {
+        if ((inputText.isNotBlank() || pendingAttachments.isNotEmpty()) && !isGenerating) {
+            viewModel.sendMessage(inputText, pendingAttachments)
+            inputText = ""
+            pendingAttachments = emptyList()
+        }
+    }
+
     LaunchedEffect(currentMessages.size, currentMessages.lastOrNull()?.content?.length) {
         if (currentMessages.isNotEmpty()) {
             if (currentMessages.size > lastMessageCount) {
-                // New message arrived - animate
                 listState.animateScrollToItem(0)
             } else {
-                // Streaming content update - instant scroll, no animation
                 listState.scrollToItem(0)
             }
             lastMessageCount = currentMessages.size
         }
     }
 
-    LaunchedEffect(imeBottom) {
-        if (imeBottom > 0 && currentMessages.isNotEmpty()) {
+    LaunchedEffect(imeVisible) {
+        if (imeVisible && currentMessages.isNotEmpty()) {
             listState.scrollToItem(0)
         }
     }
@@ -104,10 +153,7 @@ fun ChatScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Text(
-                                "LLM Chat",
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                            Text("LLM Chat", style = MaterialTheme.typography.titleMedium)
                             ModelSelectorInTopBar(
                                 configs = configs,
                                 selectedConfig = selectedConfig,
@@ -133,21 +179,14 @@ fun ChatScreen(
             }
         ) { padding ->
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .imePadding()
+                modifier = Modifier.fillMaxSize().padding(padding).imePadding()
             ) {
-                // Error banner with smooth animation
                 AnimatedVisibility(
                     visible = error != null,
                     enter = expandVertically(tween(200)) + fadeIn(tween(200)),
                     exit = shrinkVertically(tween(200)) + fadeOut(tween(200))
                 ) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.errorContainer,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
+                    Surface(color = MaterialTheme.colorScheme.errorContainer, modifier = Modifier.fillMaxWidth()) {
                         Row(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -159,56 +198,53 @@ fun ChatScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { viewModel.clearError() }) {
-                                Icon(
-                                    Icons.Default.Close,
-                                    contentDescription = "关闭",
-                                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                Icon(Icons.Default.Close, contentDescription = "关闭",
+                                    tint = MaterialTheme.colorScheme.onErrorContainer, modifier = Modifier.size(18.dp))
                             }
                         }
                     }
                 }
 
                 LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
                     state = listState,
                     reverseLayout = true,
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
                     if (currentMessages.isEmpty()) {
-                        item {
-                            EmptyStateView(configs = configs)
-                        }
+                        item { EmptyStateView(configs = configs) }
                     }
                     items(currentMessages.asReversed(), key = { it.id }) { message ->
                         MessageBubble(message = message)
                     }
                 }
 
-                Surface(
-                    color = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-                    ) {
+                Surface(color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        // Attachment preview bar
+                        if (pendingAttachments.isNotEmpty()) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                pendingAttachments.forEachIndexed { index, att ->
+                                    AttachmentPreview(
+                                        attachment = att,
+                                        onRemove = { pendingAttachments = pendingAttachments.toMutableList().apply { removeAt(index) } }
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            IconButton(
-                                onClick = { },
-                                modifier = Modifier.size(40.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Mic,
-                                    contentDescription = "语音",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            IconButton(onClick = { }, modifier = Modifier.size(40.dp)) {
+                                Icon(Icons.Default.Mic, contentDescription = "语音",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
 
                             Surface(
@@ -216,35 +252,22 @@ fun ChatScreen(
                                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 4.dp)
-                                ) {
+                                Row(verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 4.dp)) {
                                     BasicTextField(
                                         value = inputText,
                                         onValueChange = { inputText = it },
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                                        modifier = Modifier.weight(1f).padding(horizontal = 12.dp, vertical = 10.dp),
                                         maxLines = 5,
-                                        textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                            color = MaterialTheme.colorScheme.onSurface
-                                        ),
+                                        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                                        keyboardActions = KeyboardActions(onSend = {
-                                            if (inputText.isNotBlank() && !isGenerating) {
-                                                viewModel.sendMessage(inputText)
-                                                inputText = ""
-                                            }
-                                        }),
+                                        keyboardActions = KeyboardActions(onSend = { send() }),
                                         decorationBox = { innerTextField ->
                                             Box {
-                                                if (inputText.isEmpty()) {
-                                                    Text(
-                                                        "尽管问，带图也行",
+                                                if (inputText.isEmpty() && pendingAttachments.isEmpty()) {
+                                                    Text("尽管问，带图也行",
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                                                        style = MaterialTheme.typography.bodyLarge
-                                                    )
+                                                        style = MaterialTheme.typography.bodyLarge)
                                                 }
                                                 innerTextField()
                                             }
@@ -252,11 +275,8 @@ fun ChatScreen(
                                     )
 
                                     FilledIconButton(
-                                        onClick = {
-                                            viewModel.sendMessage(inputText)
-                                            inputText = ""
-                                        },
-                                        enabled = inputText.isNotBlank() && !isGenerating,
+                                        onClick = { send() },
+                                        enabled = (inputText.isNotBlank() || pendingAttachments.isNotEmpty()) && !isGenerating,
                                         modifier = Modifier.size(36.dp),
                                         shape = CircleShape,
                                         colors = IconButtonDefaults.filledIconButtonColors(
@@ -272,17 +292,10 @@ fun ChatScreen(
                                             label = "send_button"
                                         ) { generating ->
                                             if (generating) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(18.dp),
-                                                    strokeWidth = 2.dp,
-                                                    color = MaterialTheme.colorScheme.onPrimary
-                                                )
+                                                CircularProgressIndicator(modifier = Modifier.size(18.dp),
+                                                    strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                                             } else {
-                                                Icon(
-                                                    Icons.AutoMirrored.Filled.Send,
-                                                    contentDescription = "发送",
-                                                    modifier = Modifier.size(18.dp)
-                                                )
+                                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "发送", modifier = Modifier.size(18.dp))
                                             }
                                         }
                                     }
@@ -290,23 +303,18 @@ fun ChatScreen(
                             }
 
                             IconButton(
-                                onClick = { },
+                                onClick = { filePickerLauncher.launch(arrayOf("*/*")) },
                                 modifier = Modifier.size(40.dp)
                             ) {
-                                Icon(
-                                    Icons.Default.AddCircleOutline,
-                                    contentDescription = "附件",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                                Icon(Icons.Default.AddCircleOutline, contentDescription = "附件",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
 
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
+                            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             QuickActionChip("Agent")
@@ -323,49 +331,69 @@ fun ChatScreen(
 }
 
 @Composable
+private fun AttachmentPreview(attachment: Attachment, onRemove: () -> Unit) {
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp)) {
+            if (attachment.type == AttachmentType.IMAGE) {
+                val file = java.io.File(attachment.filePath)
+                if (file.exists()) {
+                    val bitmap = remember(file.absolutePath) { BitmapFactory.decodeFile(file.absolutePath) }
+                    if (bitmap != null) {
+                        Image(bitmap = bitmap.asImageBitmap(), contentDescription = attachment.fileName,
+                            modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)),
+                            contentScale = ContentScale.Crop)
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                }
+            } else {
+                Icon(Icons.Default.Description, contentDescription = null,
+                    modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(modifier = Modifier.width(6.dp))
+            }
+            Text(text = attachment.fileName, style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                modifier = Modifier.widthIn(max = 100.dp))
+            IconButton(onClick = onRemove, modifier = Modifier.size(24.dp)) {
+                Icon(Icons.Default.Close, contentDescription = "移除",
+                    modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
 private fun QuickActionChip(label: String) {
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        onClick = { }
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
+    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, onClick = { }) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-        )
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp))
     }
 }
 
 @Composable
 private fun EmptyStateView(configs: List<*>) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 80.dp),
-        contentAlignment = Alignment.Center
-    ) {
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 80.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
+            Surface(shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-                modifier = Modifier.size(72.dp)
-            ) {
+                modifier = Modifier.size(72.dp)) {
                 Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        "AI",
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Text("AI", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = if (configs.isEmpty()) "请先在设置中添加 API 配置" else "有什么可以帮你的？",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text(text = if (configs.isEmpty()) "请先在设置中添加 API 配置" else "有什么可以帮你的？",
+                style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
+}
+
+private fun getFileName(context: android.content.Context, uri: Uri): String {
+    var name = "unknown"
+    context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (cursor.moveToFirst() && nameIndex >= 0) name = cursor.getString(nameIndex)
+    }
+    return name
 }

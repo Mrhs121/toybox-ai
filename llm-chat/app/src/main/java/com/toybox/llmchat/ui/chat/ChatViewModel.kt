@@ -93,12 +93,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun sendMessage(content: String) {
+    fun sendMessage(content: String, attachments: List<Attachment> = emptyList()) {
         val config = _selectedConfig.value ?: run {
             _error.value = "请先在设置中添加 API 配置"
             return
         }
-        if (content.isBlank() || _isGenerating.value) return
+        if (content.isBlank() && attachments.isEmpty() || _isGenerating.value) return
 
         cancelStreaming()
 
@@ -113,7 +113,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val userMsg = ChatMessage(
                 id = UUID.randomUUID().toString(),
                 role = Role.USER,
-                content = content
+                content = content,
+                attachments = attachments
             )
 
             val currentConvo = cachedConversation

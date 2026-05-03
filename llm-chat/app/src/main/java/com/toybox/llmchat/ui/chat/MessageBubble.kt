@@ -1,5 +1,7 @@
 package com.toybox.llmchat.ui.chat
 
+import android.graphics.BitmapFactory
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -11,6 +13,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.*
 import androidx.compose.ui.text.font.FontFamily
@@ -18,6 +22,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.toybox.llmchat.data.model.AttachmentType
 import com.toybox.llmchat.data.model.ChatMessage
 import com.toybox.llmchat.data.model.Role
 
@@ -32,18 +37,55 @@ fun MessageBubble(message: ChatMessage) {
                 .padding(start = 80.dp, end = 16.dp, top = 6.dp, bottom = 6.dp),
             horizontalArrangement = Arrangement.End
         ) {
-            SelectionContainer {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp))
-                        .background(MaterialTheme.colorScheme.primary)
-                        .padding(horizontal = 14.dp, vertical = 10.dp)
-                ) {
-                    Text(
-                        text = message.content.ifEmpty { "..." },
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.bodyLarge
-                    )
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.widthIn(max = 300.dp)
+            ) {
+                // Image attachments
+                for (attachment in message.attachments.filter { it.type == AttachmentType.IMAGE }) {
+                    val file = java.io.File(attachment.filePath)
+                    if (file.exists()) {
+                        val bitmap = remember(file.absolutePath) { BitmapFactory.decodeFile(file.absolutePath) }
+                        if (bitmap != null) {
+                            Image(
+                                bitmap = bitmap.asImageBitmap(),
+                                contentDescription = attachment.fileName,
+                                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.FillWidth
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+                    }
+                }
+                // File attachments
+                for (attachment in message.attachments.filter { it.type == AttachmentType.FILE }) {
+                    Surface(shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                            Icon(Icons.Default.Description, contentDescription = null,
+                                modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(text = attachment.fileName, style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+                // Text content
+                SelectionContainer {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp))
+                            .background(MaterialTheme.colorScheme.primary)
+                            .padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = message.content.ifEmpty { "..." },
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
                 }
             }
         }
