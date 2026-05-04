@@ -137,7 +137,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 // Stream: update _streamingMessage for real-time UI, persist only at the end
                 var streamedContent = ""
 
-                apiService.streamChat(config, updatedMessages).collect { chunk ->
+                apiService.streamChat(config, updatedMessages, getApplication()).collect { chunk ->
                     streamedContent += chunk
                     _streamingMessage.value = ChatMessage(
                         id = assistantMsgId,

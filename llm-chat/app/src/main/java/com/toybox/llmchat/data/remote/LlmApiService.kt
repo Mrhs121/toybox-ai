@@ -15,6 +15,7 @@ import com.toybox.llmchat.data.model.ApiConfig
 import com.toybox.llmchat.data.model.AttachmentType
 import com.toybox.llmchat.data.model.ChatMessage
 import com.toybox.llmchat.data.model.Role
+import com.toybox.llmchat.data.PdfHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -57,11 +58,15 @@ class LlmApiService {
 
     fun streamChat(
         config: ApiConfig,
-        messages: List<ChatMessage>
+        messages: List<ChatMessage>,
+        context: android.content.Context? = null
     ): Flow<String> {
-        val hasAttachments = messages.any { it.attachments.isNotEmpty() && it.role == Role.USER }
-        return if (hasAttachments) {
-            streamWithAttachments(config, messages)
+        val hasNonImageAttachments = messages.any { msg ->
+            msg.attachments.isNotEmpty() && msg.role == Role.USER &&
+                msg.attachments.any { it.type != AttachmentType.IMAGE }
+        }
+        return if (hasNonImageAttachments) {
+            streamWithAttachments(config, messages, context)
         } else {
             streamViaSdk(config, messages)
         }
@@ -72,14 +77,29 @@ class LlmApiService {
         val request = ChatCompletionRequest(
             model = ModelId(config.modelId),
             messages = messages.map { msg ->
-                OpenAiChatMessage(
-                    role = when (msg.role) {
-                        Role.USER -> ChatRole.User
-                        Role.ASSISTANT -> ChatRole.Assistant
-                        Role.SYSTEM -> ChatRole.System
-                    },
-                    content = msg.content
-                )
+                val role = when (msg.role) {
+                    Role.USER -> ChatRole.User
+                    Role.ASSISTANT -> ChatRole.Assistant
+                    Role.SYSTEM -> ChatRole.System
+                }
+                val imageAttachments = msg.attachments.filter { it.type == AttachmentType.IMAGE }
+                if (imageAttachments.isNotEmpty()) {
+                    val parts = mutableListOf<ContentPart>()
+                    if (msg.content.isNotBlank()) {
+                        parts.add(TextPart(msg.content))
+                    }
+                    for (att in imageAttachments) {
+                        val file = java.io.File(att.filePath)
+                        if (file.exists()) {
+                            val bytes = file.readBytes()
+                            val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                            parts.add(ImagePart(url = "data:${att.mimeType};base64,$base64"))
+                        }
+                    }
+                    OpenAiChatMessage(role = role, content = parts)
+                } else {
+                    OpenAiChatMessage(role = role, content = msg.content)
+                }
             }
         )
         return client.chatCompletions(request).map { chunk ->
@@ -87,7 +107,11 @@ class LlmApiService {
         }
     }
 
-    private fun streamWithAttachments(config: ApiConfig, messages: List<ChatMessage>): Flow<String> = flow {
+    private fun streamWithAttachments(
+        config: ApiConfig,
+        messages: List<ChatMessage>,
+        context: android.content.Context? = null
+    ): Flow<String> = flow {
         val baseUrl = config.baseUrl.trimEnd('/')
         val url = "$baseUrl/chat/completions"
         val jsonMessages = buildJsonArray {
@@ -108,11 +132,11 @@ class LlmApiService {
                         for (att in msg.attachments) {
                             val file = java.io.File(att.filePath)
                             if (!file.exists()) continue
-                            val bytes = withContext(Dispatchers.IO) { file.readBytes() }
-                            val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
-                            val dataUri = "data:${att.mimeType};base64,$base64"
                             when (att.type) {
                                 AttachmentType.IMAGE -> {
+                                    val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                                    val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                                    val dataUri = "data:${att.mimeType};base64,$base64"
                                     add(buildJsonObject {
                                         put("type", JsonPrimitive("image_url"))
                                         put("image_url", buildJsonObject {
@@ -120,7 +144,41 @@ class LlmApiService {
                                         })
                                     })
                                 }
+                                AttachmentType.PDF -> {
+                                    if (context != null) {
+                                        val pdfResult = PdfHelper.parsePdf(context, android.net.Uri.fromFile(file))
+                                        if (!pdfResult.text.isNullOrBlank()) {
+                                            add(buildJsonObject {
+                                                put("type", JsonPrimitive("text"))
+                                                put("text", JsonPrimitive("[PDF: ${att.fileName}]\n${pdfResult.text}"))
+                                            })
+                                        } else if (pdfResult.images != null) {
+                                            for (imgDataUri in pdfResult.images) {
+                                                add(buildJsonObject {
+                                                    put("type", JsonPrimitive("image_url"))
+                                                    put("image_url", buildJsonObject {
+                                                        put("url", JsonPrimitive(imgDataUri))
+                                                    })
+                                                })
+                                            }
+                                        }
+                                    } else {
+                                        val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                                        val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                                        val dataUri = "data:${att.mimeType};base64,$base64"
+                                        add(buildJsonObject {
+                                            put("type", JsonPrimitive("file"))
+                                            put("file", buildJsonObject {
+                                                put("filename", JsonPrimitive(att.fileName))
+                                                put("file_data", JsonPrimitive(dataUri))
+                                            })
+                                        })
+                                    }
+                                }
                                 AttachmentType.FILE -> {
+                                    val bytes = withContext(Dispatchers.IO) { file.readBytes() }
+                                    val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
+                                    val dataUri = "data:${att.mimeType};base64,$base64"
                                     add(buildJsonObject {
                                         put("type", JsonPrimitive("file"))
                                         put("file", buildJsonObject {

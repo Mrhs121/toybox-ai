@@ -26,5 +26,5 @@ data class Attachment(
 
 @Serializable
 enum class AttachmentType {
-    IMAGE, FILE
+    IMAGE, FILE, PDF
 }

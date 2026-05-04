@@ -88,11 +88,16 @@ fun ChatScreen(
                 }
                 if (!file.exists()) return@withContext null
 
+                val isPdf = mimeType == "application/pdf"
                 Attachment(
                     fileName = fileName,
                     mimeType = mimeType,
                     filePath = file.absolutePath,
-                    type = if (isImage) AttachmentType.IMAGE else AttachmentType.FILE
+                    type = when {
+                        isImage -> AttachmentType.IMAGE
+                        isPdf -> AttachmentType.PDF
+                        else -> AttachmentType.FILE
+                    }
                 )
             }
             if (attachment != null) {
@@ -347,7 +352,12 @@ private fun AttachmentPreview(attachment: Attachment, onRemove: () -> Unit) {
                     }
                 }
             } else {
-                Icon(Icons.Default.Description, contentDescription = null,
+                val icon = if (attachment.type == AttachmentType.PDF) {
+                    Icons.Default.PictureAsPdf
+                } else {
+                    Icons.Default.Description
+                }
+                Icon(icon, contentDescription = null,
                     modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(6.dp))
             }

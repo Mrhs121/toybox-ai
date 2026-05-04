@@ -57,13 +57,18 @@ fun MessageBubble(message: ChatMessage) {
                         }
                     }
                 }
-                // File attachments
-                for (attachment in message.attachments.filter { it.type == AttachmentType.FILE }) {
+                // File attachments (including PDF)
+                for (attachment in message.attachments.filter { it.type == AttachmentType.FILE || it.type == AttachmentType.PDF }) {
                     Surface(shape = RoundedCornerShape(8.dp),
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)) {
                         Row(verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
-                            Icon(Icons.Default.Description, contentDescription = null,
+                            val icon = if (attachment.type == AttachmentType.PDF) {
+                                Icons.Default.PictureAsPdf
+                            } else {
+                                Icons.Default.Description
+                            }
+                            Icon(icon, contentDescription = null,
                                 modifier = Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onPrimary)
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(text = attachment.fileName, style = MaterialTheme.typography.labelSmall,
