@@ -10,3 +10,7 @@
 
 # Keep OpenAI client
 -keep class com.aallam.openai.** { *; }
+
+# Ignore optional JPEG2000 decoder references from pdfbox-android
+-dontwarn com.gemalto.jp2.**
+-dontnote com.gemalto.jp2.**
