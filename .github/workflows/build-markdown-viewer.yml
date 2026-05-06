@@ -1,0 +1,56 @@
+name: Build Markdown Viewer
+
+on:
+  push:
+    paths:
+      - 'markdown-viewer/**'
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release
+        working-directory: markdown-viewer
+        run: |
+          chmod +x build-app.sh
+          ./build-app.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MarkdownViewer-mac
+          path: markdown-viewer/.build/MarkdownViewer.app
+          retention-days: 30
+
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get date
+        id: date
+        run: echo "date=$(date +'%Y-%m-%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: markdown-viewer-${{ steps.date.outputs.date }}-${{ github.run_number }}
+          name: Markdown Viewer ${{ steps.date.outputs.date }}
+          files: artifacts/**/*
+          draft: false
+          prerelease: false
