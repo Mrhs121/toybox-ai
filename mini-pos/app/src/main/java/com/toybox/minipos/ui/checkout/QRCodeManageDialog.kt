@@ -137,9 +137,7 @@ fun QRCodeManageDialog(
                             onClick = { imagePicker.launch(arrayOf("image/*")) },
                             modifier = Modifier.weight(1f)
                         ) {
-                            Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(Modifier.width(4.dp))
-                            Text(if (pickedUri != null) "重新选择" else "选择图片")
+                            Text(if (pickedUri != null) "重选" else "选图")
                         }
                         Button(
                             onClick = {
@@ -155,17 +153,16 @@ fun QRCodeManageDialog(
                         ) {
                             Text("保存")
                         }
-                    }
-
-                    TextButton(
-                        onClick = {
-                            showAddForm = false
-                            newName = ""
-                            pickedUri = null
-                        },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("取消")
+                        OutlinedButton(
+                            onClick = {
+                                showAddForm = false
+                                newName = ""
+                                pickedUri = null
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("取消")
+                        }
                     }
                 } else {
                     FilledTonalButton(
@@ -179,11 +176,7 @@ fun QRCodeManageDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("完成")
-            }
-        }
+        confirmButton = {}
     )
 }
 

@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,6 +23,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import coil.compose.rememberAsyncImagePainter
 import com.toybox.minipos.data.model.CartItem
+
+private val PriceColor = Color(0xFFFF4500)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,7 +91,7 @@ fun CheckoutScreen(
                                 "¥%.2f".format(totalAmount),
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = PriceColor
                             )
                         }
                     }
@@ -153,7 +156,7 @@ fun CheckoutScreen(
                             "合计: ¥%.2f".format(totalAmount),
                             fontSize = 24.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = PriceColor
                         )
                     }
                 },
@@ -353,14 +356,14 @@ fun CheckoutScreen(
                                 "¥%.2f".format(totalAmount),
                                 fontSize = 28.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = PriceColor
                             )
                         }
                         Button(
                             onClick = { showCheckoutDialog = true },
                             modifier = Modifier.height(52.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.primary
+                                containerColor = PriceColor
                             )
                         ) {
                             Icon(Icons.Default.CheckCircle, contentDescription = null)
@@ -406,37 +409,41 @@ private fun CartItemCard(
                 Text(
                     text = "¥%.2f".format(item.product.price),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = PriceColor
                 )
             }
 
-            // Quantity controls
+            // Quantity controls — fixed width so it doesn't shift
             Row(
+                modifier = Modifier.width(96.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
-                IconButton(onClick = onDecrease, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Remove, contentDescription = "减少", modifier = Modifier.size(18.dp))
+                IconButton(onClick = onDecrease, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Remove, contentDescription = "减少", modifier = Modifier.size(16.dp))
                 }
                 Text(
                     text = "${item.quantity}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.widthIn(min = 20.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
-                IconButton(onClick = onIncrease, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Add, contentDescription = "增加", modifier = Modifier.size(18.dp))
+                IconButton(onClick = onIncrease, modifier = Modifier.size(28.dp)) {
+                    Icon(Icons.Default.Add, contentDescription = "增加", modifier = Modifier.size(16.dp))
                 }
             }
 
-            Spacer(Modifier.width(8.dp))
-
-            // Subtotal
-            Column(horizontalAlignment = Alignment.End) {
+            // Subtotal — fixed width right-aligned
+            Column(
+                modifier = Modifier.width(96.dp),
+                horizontalAlignment = Alignment.End
+            ) {
                 Text(
                     text = "¥%.2f".format(item.subtotal),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = PriceColor
                 )
                 IconButton(onClick = onRemove, modifier = Modifier.size(24.dp)) {
                     Icon(
