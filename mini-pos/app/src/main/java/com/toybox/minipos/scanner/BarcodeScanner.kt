@@ -2,11 +2,15 @@ package com.toybox.minipos.scanner
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraMetadata
+import android.hardware.camera2.CaptureRequest
 import android.media.ToneGenerator
 import android.media.AudioManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
@@ -141,42 +145,47 @@ private fun CameraPreview(
         onDispose { toneGenerator?.release() }
     }
 
+    @Suppress("UnsafeOptInUsageError")
+    val singlePreviewView = remember { PreviewView(context) }
+
+    LaunchedEffect(Unit) {
+        val cameraProvider = ProcessCameraProvider.getInstance(context).get()
+        val previewBuilder = Preview.Builder()
+        Camera2Interop.Extender(previewBuilder)
+            .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+        val preview = previewBuilder.build().also {
+            it.surfaceProvider = singlePreviewView.surfaceProvider
+        }
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .also { analysis ->
+                analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+                    processImage(imageProxy) { barcode ->
+                        if (scannedBarcode == null) {
+                            scannedBarcode = barcode
+                            try { toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 150) } catch (_: Exception) {}
+                            onBarcodeScanned(barcode)
+                        }
+                    }
+                }
+            }
+        try {
+            cameraProvider.unbindAll()
+            val camera = cameraProvider.bindToLifecycle(lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageAnalysis)
+            singlePreviewView.setOnTouchListener { _, event ->
+                val factory = singlePreviewView.meteringPointFactory
+                val point = factory.createPoint(event.x, event.y)
+                val action = FocusMeteringAction.Builder(point).build()
+                camera.cameraControl.startFocusAndMetering(action)
+                true
+            }
+        } catch (_: Exception) { }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx)
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also {
-                        it.surfaceProvider = previewView.surfaceProvider
-                    }
-                    val imageAnalysis = ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also { analysis ->
-                            analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                                processImage(imageProxy) { barcode ->
-                                    if (scannedBarcode == null) {
-                                        scannedBarcode = barcode
-                                        try { toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 150) } catch (_: Exception) {}
-                                        onBarcodeScanned(barcode)
-                                    }
-                                }
-                            }
-                        }
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            preview,
-                            imageAnalysis
-                        )
-                    } catch (_: Exception) { }
-                }, ContextCompat.getMainExecutor(ctx))
-                previewView
-            },
+            factory = { singlePreviewView },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -221,6 +230,9 @@ private fun ContinuousCameraWithCart(
         onDispose { toneGenerator?.release() }
     }
 
+    // Camera facing
+    var useFrontCamera by remember { mutableStateOf(false) }
+
     // Cooldown: prevent the same barcode from being scanned repeatedly
     var lastScannedBarcode by remember { mutableStateOf<String?>(null) }
     var canScan by remember { mutableStateOf(true) }
@@ -248,44 +260,57 @@ private fun ContinuousCameraWithCart(
         }
     }
 
+    // Bind camera with selected facing direction
+    val cameraSelector = if (useFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+    val previewView = remember { PreviewView(context) }
+
+    // Mirror preview for front camera
+    LaunchedEffect(useFrontCamera) {
+        previewView.scaleX = if (useFrontCamera) -1f else 1f
+    }
+
+    @Suppress("UnsafeOptInUsageError")
+    LaunchedEffect(cameraSelector) {
+        val cameraProvider = ProcessCameraProvider.getInstance(context).get()
+        val previewBuilder = Preview.Builder()
+        // Enable continuous auto-focus via Camera2 interop
+        Camera2Interop.Extender(previewBuilder)
+            .setCaptureRequestOption(CaptureRequest.CONTROL_AF_MODE, CameraMetadata.CONTROL_AF_MODE_CONTINUOUS_PICTURE)
+        val preview = previewBuilder.build().also {
+            it.surfaceProvider = previewView.surfaceProvider
+        }
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .build()
+            .also { analysis ->
+                analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
+                    processImage(imageProxy) { barcode ->
+                        if (canScan && barcode != lastScannedBarcode) {
+                            lastScannedBarcode = barcode
+                            try { toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 150) } catch (_: Exception) {}
+                            onBarcodeScanned(barcode)
+                        }
+                    }
+                }
+            }
+        try {
+            cameraProvider.unbindAll()
+            val camera = cameraProvider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
+            // Tap-to-focus on the preview
+            previewView.setOnTouchListener { _, event ->
+                val factory = previewView.meteringPointFactory
+                val point = factory.createPoint(event.x, event.y)
+                val action = FocusMeteringAction.Builder(point).build()
+                camera.cameraControl.startFocusAndMetering(action)
+                true
+            }
+        } catch (_: Exception) { }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         // Camera full screen behind everything
         AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx)
-                val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also {
-                        it.surfaceProvider = previewView.surfaceProvider
-                    }
-                    val imageAnalysis = ImageAnalysis.Builder()
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .build()
-                        .also { analysis ->
-                            analysis.setAnalyzer(Executors.newSingleThreadExecutor()) { imageProxy ->
-                                processImage(imageProxy) { barcode ->
-                                    if (canScan && barcode != lastScannedBarcode) {
-                                        lastScannedBarcode = barcode
-                                        // Beep immediately on scan
-                                        try { toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 150) } catch (_: Exception) {}
-                                        onBarcodeScanned(barcode)
-                                    }
-                                }
-                            }
-                        }
-                    try {
-                        cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(
-                            lifecycleOwner,
-                            CameraSelector.DEFAULT_BACK_CAMERA,
-                            preview,
-                            imageAnalysis
-                        )
-                    } catch (_: Exception) { }
-                }, ContextCompat.getMainExecutor(ctx))
-                previewView
-            },
+            factory = { previewView },
             modifier = Modifier.fillMaxSize()
         )
 
@@ -318,7 +343,15 @@ private fun ContinuousCameraWithCart(
                     .padding(horizontal = 12.dp, vertical = 4.dp)
             )
             Spacer(Modifier.weight(1f))
-            Spacer(Modifier.size(40.dp))
+            IconButton(
+                onClick = { useFrontCamera = !useFrontCamera },
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor = Color.Black.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(Icons.Default.Cameraswitch, contentDescription = "切换摄像头", tint = Color.White, modifier = Modifier.size(20.dp))
+            }
         }
 
         // Feedback overlay

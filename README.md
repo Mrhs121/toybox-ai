@@ -72,6 +72,29 @@ swift run MarkdownViewer
 
 ![Markdown Viewer](./markdown-viewer/screenshot.png)
 
+## 🏪 Mini POS 小店收银 - [mini-pos](./mini-pos)
+
+一个专为小超市、便利店、小卖铺设计的 Android 收银 App。
+
+**核心特性：**
+
+- **连续扫码收银** — 打开扫码界面后连续扫描商品条码，自动添加到购物车，扫码成功有声音提示
+- **前后摄像头切换** — 支持切换前置/后置摄像头，前置镜像显示，自动对焦 + 点击对焦
+- **商品管理** — 扫码或手动添加商品，支持条码、名称、价格、分类，搜索过滤
+- **收款码管理** — 上传多个平台收款码（微信、支付宝等），结算时展示并支持 Tab 切换
+- **经营统计** — 今日/本周/本月销售额、订单数、热销商品排行
+- **订单明细** — 带订单编号，点击展开查看商品明细
+
+下载 APK：[GitHub Releases](https://github.com/Mrhs121/toybox-ai/releases)
+
+| 收银台 | 扫码结算 | 商品管理 |
+|:---:|:---:|:---:|
+| ![收银台](./mini-pos/screenshots/checkout.jpg) | ![扫码结算](./mini-pos/screenshots/scanner.jpg) | ![商品管理](./mini-pos/screenshots/products.jpg) |
+
+| 收款码管理 | 经营分析 | 订单明细 |
+|:---:|:---:|:---:|
+| ![收款码管理](./mini-pos/screenshots/qrcode.jpg) | ![经营分析](./mini-pos/screenshots/stats.jpg) | ![订单明细](./mini-pos/screenshots/order-detail.jpg) |
+
 ## 📱 FastTerminal - [fastTerminal](./fastTerminal)
 
 一个把 PC 端终端体验搬到 Android 上的 SSH 客户端，专为外接键盘和鼠标设计。
