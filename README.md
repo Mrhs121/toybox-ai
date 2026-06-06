@@ -91,13 +91,9 @@ swift run MarkdownViewer
 |:---:|:---:|:---:|
 | ![收银台](./mini-pos/screenshots/checkout.jpg) | ![扫码结算](./mini-pos/screenshots/scanner.jpg) | ![商品管理](./mini-pos/screenshots/products.jpg) |
 
-| 收款码结算 | 结算成功 | 经营分析 |
+| 收款码结算 | 经营分析 | 订单明细 |
 |:---:|:---:|:---:|
-| ![收款码结算](./mini-pos/screenshots/qrcode.jpg) | ![结算成功](./mini-pos/screenshots/checkout-success.jpg) | ![经营分析](./mini-pos/screenshots/stats.jpg) |
-
-| 订单明细 |
-|:---:|
-| ![订单明细](./mini-pos/screenshots/order-detail.jpg) |
+| ![收款码结算](./mini-pos/screenshots/qrcode.jpg) | ![经营分析](./mini-pos/screenshots/stats.jpg) | ![订单明细](./mini-pos/screenshots/order-detail.jpg) |
 
 ## 📱 FastTerminal - [fastTerminal](./fastTerminal)
 
