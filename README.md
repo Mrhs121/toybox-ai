@@ -97,34 +97,27 @@ swift run MarkdownViewer
 
 ## 📱 FastTerminal - [fastTerminal](./fastTerminal)
 
-一个把 PC 端终端体验搬到 Android 上的 SSH 客户端，专为外接键盘和鼠标设计。
+一个把 PC 端终端体验搬到 Android 上的 SSH 客户端，专为横屏平板、外接键盘和鼠标设计。
 
 **核心特性：**
 
-- **底部导航栏** — Home、Terminal、Settings、Keys、About 五大面板，启动即显示历史连接，一键直连
+- **平板级侧边栏导航** — Connections、Terminal、Settings 三大面板，横屏下使用左侧导航，连接管理更像桌面工具
+- **产品化连接管理** — 服务器卡片展示主机、用户、协议、端口、连接状态和收藏分组，支持搜索、收藏、编辑、复制、删除
 - **多 Tab 会话** — 同时打开多条远程连接，顶部 tab 栏快速切换，每个 tab 独立终端内容
 - **类 iTerm2 快捷键** — `Ctrl+T` 新建 tab、`Ctrl+W` 关闭 tab、`Ctrl+←/→` 切换 tab，和桌面终端操作习惯一致
 - **PC 级复制粘贴** — 鼠标左键拖拽选中文本，右键弹出粘贴菜单；支持 `Ctrl+C/V` 复制粘贴，`Esc` 不会误触发 Android 返回
 - **快捷虚拟按键栏** — 底部两行快捷键：特殊字符（`~` `/` `|` `\` 等）、方向键、`Ctrl+C/D/Z` 等组合键，手机软键盘输入不再痛苦
 - **Nerd Font 支持** — 内置 JetBrainsMono Nerd Font，远程服务器的 Powerline、文件图标等符号正常显示
-- **连接管理** — 保存多个 SSH 连接配置，紧凑 chip 卡片展示，点击即连
 - **SFTP 文件浏览器** — 右侧抽屉浏览远程文件，支持上传、下载、新建文件夹、重命名、删除
+- **应用设置** — 支持终端字号、光标样式、屏幕常亮等常用终端行为设置
 
 下载 APK：[GitHub Releases](https://github.com/Mrhs121/toybox-ai/releases)
 
-### 主页 & 连接管理
+### 新版界面预览
 
-![Home panel](./img/fastTerminal-home.jpg)
-
-![Settings panel](./img/fastTerminal-settings.jpg)
-
-### 终端体验
-
-![Terminal with fastfetch](./img/fastTerminal-terminal.jpg)
-
-![Terminal with ls](./img/fastTerminal-ls.jpg)
-
-![Terminal with cat](./img/fastTerminal-cat.jpg)
+| Connections | Terminal | Settings |
+|:---:|:---:|:---:|
+| ![FastTerminal Connections](./img/fastTerminal-connections.png) | ![FastTerminal Terminal](./img/fastTerminal-terminal-new.png) | ![FastTerminal Settings](./img/fastTerminal-settings-new.png) |
 
 ### SFTP 文件浏览器
 

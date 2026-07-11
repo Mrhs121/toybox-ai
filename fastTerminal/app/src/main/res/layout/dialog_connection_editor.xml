@@ -40,6 +40,27 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
+            android:hint="@string/label_hint"
+            app:boxBackgroundColor="@color/drawer_field_surface"
+            app:boxStrokeColor="@color/drawer_field_stroke"
+            app:endIconTint="@color/text_muted_on_dark"
+            app:hintTextColor="@color/text_muted_on_dark">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/dialog_label_input"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:imeOptions="actionNext"
+                android:inputType="textCapWords"
+                android:textColor="@color/text_on_dark"
+                android:textColorHint="@color/text_muted_on_dark" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
             android:hint="@string/host_hint"
             app:boxBackgroundColor="@color/drawer_field_surface"
             app:boxStrokeColor="@color/drawer_field_stroke"

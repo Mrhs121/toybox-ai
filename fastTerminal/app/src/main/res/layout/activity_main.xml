@@ -59,8 +59,8 @@
             android:layout_weight="1">
 
             <include
-                android:id="@+id/panel_home"
-                layout="@layout/panel_home"
+                android:id="@+id/panel_connections"
+                layout="@layout/panel_connections"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:visibility="visible" />
@@ -74,21 +74,7 @@
 
             <include
                 android:id="@+id/panel_settings"
-                layout="@layout/panel_settings"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone" />
-
-            <include
-                android:id="@+id/panel_keys"
-                layout="@layout/panel_keys"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:visibility="gone" />
-
-            <include
-                android:id="@+id/panel_about"
-                layout="@layout/panel_about"
+                layout="@layout/panel_app_settings"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:visibility="gone" />

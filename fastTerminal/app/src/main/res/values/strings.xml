@@ -82,4 +82,60 @@
     <string name="about_licenses">Licenses</string>
     <string name="connection_picker_title">Select Connection</string>
     <string name="new_connection_option">+ New Connection</string>
+
+    <!-- Connections panel -->
+    <string name="nav_connections">Connections</string>
+    <string name="add_connection_description">Add connection</string>
+    <string name="search_hint">Search connections</string>
+    <string name="label_hint">Label (optional)</string>
+    <string name="edit_action">Edit</string>
+    <string name="duplicate_action">Duplicate</string>
+    <string name="delete_action">Delete</string>
+    <string name="connection_overflow_description">More actions</string>
+    <string name="no_connections_title">No connections yet</string>
+    <string name="no_connections_message">Add your first connection to get started</string>
+    <string name="add_first_connection">Add connection</string>
+    <string name="last_connected_never">Never connected</string>
+    <string name="last_connected_just_now">Just now</string>
+    <string name="last_connected_format">Last connected %s</string>
+    <string name="relative_time_just_now">Just now</string>
+    <string name="relative_time_minutes_ago">%dm ago</string>
+    <string name="relative_time_hours_ago">%dh ago</string>
+    <string name="relative_time_yesterday">Yesterday</string>
+    <string name="relative_time_days_ago">%dd ago</string>
+    <string name="connection_duplicated">Connection duplicated</string>
+    <string name="connection_duplicate_suffix"> (copy)</string>
+
+    <!-- App settings panel -->
+    <string name="settings_terminal_section">Terminal</string>
+    <string name="settings_behavior_section">Behavior</string>
+    <string name="settings_keys_section">SSH Keys</string>
+    <string name="settings_about_section">About</string>
+    <string name="settings_back_action">Back</string>
+    <string name="default_font_size_label">Default font size</string>
+    <string name="font_size_value_format">%d sp</string>
+    <string name="cursor_style_label">Cursor style</string>
+    <string name="cursor_style_block">Block</string>
+    <string name="cursor_style_underline">Underline</string>
+    <string name="cursor_style_bar">Bar</string>
+    <string name="keep_screen_on_label">Keep screen on</string>
+    <string name="settings_keys_subtitle">Manage SSH key pairs for passwordless login</string>
+    <string name="settings_about_subtitle">FastTerminal version and included libraries</string>
+
+    <!-- Product polish -->
+    <string name="new_connection_action_full">New connection</string>
+    <string name="search_connections_hint">Search by host, label, or user</string>
+    <string name="connections_count_format">%d servers</string>
+    <string name="connections_count_one">1 server</string>
+    <string name="favorites_section">Favorites</string>
+    <string name="all_connections_section">All connections</string>
+    <string name="connected_now">Connected now</string>
+    <string name="connected_just_now">Connected just now</string>
+    <string name="connected_relative_format">Connected %s</string>
+    <string name="not_connected_yet">Not connected yet</string>
+    <string name="favorite_action">Favorite</string>
+    <string name="remove_favorite_action">Remove favorite</string>
+    <string name="server_icon_description">Server</string>
+    <string name="favorite_description">Toggle favorite</string>
+    <string name="clear_search_description">Clear search</string>
 </resources>

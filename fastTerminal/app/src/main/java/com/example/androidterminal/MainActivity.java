@@ -5,10 +5,12 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -22,9 +24,12 @@ import android.view.MotionEvent;
 import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
+import android.widget.RadioGroup;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 import android.view.inputmethod.InputMethodManager;
@@ -54,6 +59,7 @@ import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.materialswitch.MaterialSwitch;
 import com.google.android.material.textfield.TextInputEditText;
 import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
@@ -80,9 +86,22 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private static final String KEY_PORT = "port";
     private static final String KEY_USERNAME = "username";
     private static final String KEY_PASSWORD = "password";
+    private static final String KEY_DEFAULT_FONT_SIZE = "default_font_size_sp";
+    private static final String KEY_CURSOR_STYLE = "cursor_style";
+    private static final String KEY_KEEP_SCREEN_ON = "keep_screen_on";
     private static final int DEFAULT_TERMINAL_TEXT_SIZE_SP = 30;
     private static final int MIN_TERMINAL_TEXT_SIZE_SP = 12;
     private static final int MAX_TERMINAL_TEXT_SIZE_SP = 60;
+    private static final int CURSOR_STYLE_BLOCK = 0;
+    private static final int CURSOR_STYLE_UNDERLINE = 1;
+    private static final int CURSOR_STYLE_BAR = 2;
+    private static final int DEFAULT_CURSOR_STYLE = CURSOR_STYLE_BLOCK;
+    private static final boolean DEFAULT_KEEP_SCREEN_ON = true;
+    private static final int MENU_FAVORITE = 1;
+    private static final int MENU_EDIT = 2;
+    private static final int MENU_DUPLICATE = 3;
+    private static final int MENU_DELETE = 4;
+    private static final long RECENT_CONNECTION_MS = 7L * 24L * 60L * 60L * 1000L;
 
     private ActivityMainBinding binding;
     private SharedPreferences preferences;
@@ -98,13 +117,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private View ctrlButton;
     private View altButton;
     private FileBrowserDrawer fileBrowserDrawer;
-    private View panelHome;
+    private View panelConnections;
     private View panelTerminal;
     private View panelSettings;
-    private View panelKeys;
-    private View panelAbout;
-    private int activePanelId = R.id.nav_home;
+    private int activePanelId = R.id.nav_connections;
     private boolean switchingPanel = false;
+    private boolean settingsShowingSubpage = false;
+    private EditText connectionsSearch;
+    private String connectionSearchQuery = "";
 
     private final ActivityResultLauncher<String> filePickerLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -121,24 +141,20 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
         preferences = getSharedPreferences(PREFS, MODE_PRIVATE);
 
-        panelHome = binding.panelHome.getRoot();
+        panelConnections = binding.panelConnections.getRoot();
         panelTerminal = binding.panelTerminal.getRoot();
         panelSettings = binding.panelSettings.getRoot();
-        panelKeys = binding.panelKeys.getRoot();
-        panelAbout = binding.panelAbout.getRoot();
 
         restoreSavedConnections();
 
-        setupBottomNavigation();
+        setupAdaptiveNavigation();
         setupTerminal();
         bindActions();
         setupShortcutBar();
         setupFileBrowser();
-        setupHomePanel();
-        setupSettingsPanel();
-        setupKeysPanel();
-        setupAboutPanel();
-        switchToPanel(R.id.nav_home);
+        setupConnectionsPanel();
+        setupAppSettingsPanel();
+        switchToPanel(R.id.nav_connections);
     }
 
     @Override
@@ -268,8 +284,10 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         terminalView.setTerminalViewClient(this);
         terminalView.setFocusable(true);
         terminalView.setFocusableInTouchMode(true);
-        terminalView.setKeepScreenOn(true);
-        terminalView.setTextSize(DEFAULT_TERMINAL_TEXT_SIZE_SP);
+        terminalView.setKeepScreenOn(preferences.getBoolean(KEY_KEEP_SCREEN_ON, DEFAULT_KEEP_SCREEN_ON));
+        int defaultFontSize = preferences.getInt(KEY_DEFAULT_FONT_SIZE, DEFAULT_TERMINAL_TEXT_SIZE_SP);
+        terminalView.setTextSize(defaultFontSize);
+        terminalScaleFactor = defaultFontSize / (float) DEFAULT_TERMINAL_TEXT_SIZE_SP;
         Typeface nerdFont = Typeface.createFromAsset(getAssets(), "fonts/JetBrainsMonoNerdFont-Regular.ttf");
         terminalView.setTypeface(nerdFont);
         applyCompactPointerIcon();
@@ -359,199 +377,478 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         }
     }
 
-    private void setupBottomNavigation() {
+    private void setupAdaptiveNavigation() {
         binding.bottomNavigation.setOnItemSelectedListener(item -> {
             if (!switchingPanel) {
                 switchToPanel(item.getItemId());
             }
             return true;
         });
+        setupSidebarNavigationIfPresent();
+    }
+
+    private void setupSidebarNavigationIfPresent() {
+        View connections = binding.getRoot().findViewById(R.id.sidebar_nav_connections);
+        View terminal = binding.getRoot().findViewById(R.id.sidebar_nav_terminal);
+        View settings = binding.getRoot().findViewById(R.id.sidebar_nav_settings);
+        if (connections == null || terminal == null || settings == null) {
+            return;
+        }
+        connections.setOnClickListener(v -> switchToPanel(R.id.nav_connections));
+        terminal.setOnClickListener(v -> switchToPanel(R.id.nav_terminal));
+        settings.setOnClickListener(v -> switchToPanel(R.id.nav_settings));
     }
 
     private void switchToPanel(int panelId) {
         switchingPanel = true;
         activePanelId = panelId;
-        panelHome.setVisibility(panelId == R.id.nav_home ? View.VISIBLE : View.GONE);
+        panelConnections.setVisibility(panelId == R.id.nav_connections ? View.VISIBLE : View.GONE);
         panelTerminal.setVisibility(panelId == R.id.nav_terminal ? View.VISIBLE : View.GONE);
         panelSettings.setVisibility(panelId == R.id.nav_settings ? View.VISIBLE : View.GONE);
-        panelKeys.setVisibility(panelId == R.id.nav_keys ? View.VISIBLE : View.GONE);
-        panelAbout.setVisibility(panelId == R.id.nav_about ? View.VISIBLE : View.GONE);
-        binding.bottomNavigation.setSelectedItemId(panelId);
+        updateNavigationSelection(panelId);
         switchingPanel = false;
 
-        if (panelId == R.id.nav_home) {
-            renderHomePanel();
+        if (panelId == R.id.nav_connections) {
+            renderConnectionsPanel();
         } else if (panelId == R.id.nav_terminal) {
             if (terminalView != null) terminalView.post(terminalView::requestFocus);
-        }
-    }
-
-    private void setupHomePanel() {
-        renderHomePanel();
-    }
-
-    private void renderHomePanel() {
-        ViewGroup recentContainer = panelHome.findViewById(R.id.home_recent_container);
-        TextView recentEmpty = panelHome.findViewById(R.id.home_recent_empty);
-        ViewGroup savedContainer = panelHome.findViewById(R.id.home_saved_container);
-        TextView savedEmpty = panelHome.findViewById(R.id.home_saved_empty);
-
-        // Render recent connections
-        recentContainer.removeAllViews();
-        List<RecentConnection> recentConnections = loadRecentConnections();
-        recentEmpty.setVisibility(recentConnections.isEmpty() ? View.VISIBLE : View.GONE);
-        for (RecentConnection rc : recentConnections) {
-            View itemView = getLayoutInflater().inflate(R.layout.item_connection_chip, recentContainer, false);
-            MaterialCardView cardView = itemView.findViewById(R.id.saved_connection_card);
-            TextView nameView = itemView.findViewById(R.id.saved_connection_name);
-
-            cardView.setStrokeColor(ContextCompat.getColor(this, R.color.drawer_field_stroke));
-            cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.drawer_field_surface));
-            cardView.setStrokeWidth(dp(1));
-            nameView.setText(rc.username + "@" + rc.host);
-
-            cardView.setOnClickListener(v -> {
-                SavedConnection match = findMatchingConnection(rc.host, rc.port, rc.username);
-                if (match != null) {
-                    connect(match);
-                } else {
-                    connect(new SshConnectionConfig(rc.host, rc.port, rc.username, ""), null);
-                }
-            });
-            recentContainer.addView(itemView);
-        }
-
-        // Render saved connections
-        savedContainer.removeAllViews();
-        savedEmpty.setVisibility(savedConnections.isEmpty() ? View.VISIBLE : View.GONE);
-        for (SavedConnection sc : savedConnections) {
-            View itemView = getLayoutInflater().inflate(R.layout.item_connection_chip, savedContainer, false);
-            MaterialCardView cardView = itemView.findViewById(R.id.saved_connection_card);
-            TextView nameView = itemView.findViewById(R.id.saved_connection_name);
-
-            cardView.setStrokeColor(ContextCompat.getColor(this, R.color.drawer_field_stroke));
-            cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.drawer_field_surface));
-            cardView.setStrokeWidth(dp(1));
-            nameView.setText(sc.getDisplayName());
-
-            cardView.setOnClickListener(v -> connect(sc));
-            savedContainer.addView(itemView);
-        }
-    }
-
-    private static class RecentConnection {
-        final String host;
-        final int port;
-        final String username;
-        final long timestamp;
-
-        RecentConnection(String host, int port, String username, long timestamp) {
-            this.host = host;
-            this.port = port;
-            this.username = username;
-            this.timestamp = timestamp;
-        }
-    }
-
-    private List<RecentConnection> loadRecentConnections() {
-        List<RecentConnection> result = new ArrayList<>();
-        String json = preferences.getString("recent_connections", "[]");
-        try {
-            JSONArray arr = new JSONArray(json);
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject obj = arr.optJSONObject(i);
-                if (obj != null) {
-                    result.add(new RecentConnection(
-                        obj.optString("host", ""),
-                        obj.optInt("port", 22),
-                        obj.optString("username", ""),
-                        obj.optLong("timestamp", 0)
-                    ));
-                }
-            }
-        } catch (JSONException ignored) {}
-        return result;
-    }
-
-    private void addRecentConnection(String host, int port, String username) {
-        List<RecentConnection> list = loadRecentConnections();
-        // Remove existing entry with same host:port:username
-        for (int i = list.size() - 1; i >= 0; i--) {
-            RecentConnection rc = list.get(i);
-            if (rc.host.equals(host) && rc.port == port && rc.username.equals(username)) {
-                list.remove(i);
+        } else if (panelId == R.id.nav_settings) {
+            if (settingsShowingSubpage) {
+                showSettingsMain();
             }
         }
-        list.add(0, new RecentConnection(host, port, username, System.currentTimeMillis()));
-        // Keep max 20
-        while (list.size() > 20) list.remove(list.size() - 1);
+    }
 
-        JSONArray arr = new JSONArray();
-        for (RecentConnection rc : list) {
-            JSONObject obj = new JSONObject();
-            try {
-                obj.put("host", rc.host);
-                obj.put("port", rc.port);
-                obj.put("username", rc.username);
-                obj.put("timestamp", rc.timestamp);
-            } catch (JSONException ignored) {}
-            arr.put(obj);
+    private void updateNavigationSelection(int panelId) {
+        binding.bottomNavigation.setSelectedItemId(panelId);
+        updateSidebarItem(R.id.sidebar_nav_connections, panelId == R.id.nav_connections);
+        updateSidebarItem(R.id.sidebar_nav_terminal, panelId == R.id.nav_terminal);
+        updateSidebarItem(R.id.sidebar_nav_settings, panelId == R.id.nav_settings);
+    }
+
+    private void updateSidebarItem(int viewId, boolean selected) {
+        View item = binding.getRoot().findViewById(viewId);
+        if (item == null) {
+            return;
         }
-        preferences.edit().putString("recent_connections", arr.toString()).apply();
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(12));
+        bg.setColor(ContextCompat.getColor(this, selected ? R.color.sidebar_item_active : android.R.color.transparent));
+        item.setBackground(bg);
+        tintSidebarItem(item, selected);
     }
 
-    private void setupSettingsPanel() {
-        panelSettings.findViewById(R.id.settings_new_connection).setOnClickListener(v -> showConnectionEditor(null));
-        renderSettingsPanel();
-    }
-
-    private void renderSettingsPanel() {
-        ViewGroup container = panelSettings.findViewById(R.id.settings_connections_container);
-        TextView empty = panelSettings.findViewById(R.id.settings_connections_empty);
-        container.removeAllViews();
-        empty.setVisibility(savedConnections.isEmpty() ? View.VISIBLE : View.GONE);
-        for (SavedConnection sc : savedConnections) {
-            View itemView = getLayoutInflater().inflate(R.layout.item_connection_chip, container, false);
-            MaterialCardView cardView = itemView.findViewById(R.id.saved_connection_card);
-            TextView nameView = itemView.findViewById(R.id.saved_connection_name);
-            View editButton = itemView.findViewById(R.id.edit_saved_connection_button);
-            View deleteButton = itemView.findViewById(R.id.delete_saved_connection_button);
-
-            cardView.setStrokeColor(ContextCompat.getColor(this, R.color.drawer_field_stroke));
-            cardView.setCardBackgroundColor(ContextCompat.getColor(this, R.color.drawer_field_surface));
-            cardView.setStrokeWidth(dp(1));
-            nameView.setText(sc.getDisplayName());
-
-            editButton.setVisibility(View.VISIBLE);
-            deleteButton.setVisibility(View.VISIBLE);
-            cardView.setOnClickListener(v -> connect(sc));
-            editButton.setOnClickListener(v -> showConnectionEditor(sc));
-            deleteButton.setOnClickListener(v -> deleteSavedConnection(sc));
-            container.addView(itemView);
+    private void tintSidebarItem(View item, boolean selected) {
+        int tint = ContextCompat.getColor(this, selected ? R.color.brand : R.color.text_muted_on_dark);
+        if (item instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) item;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View child = group.getChildAt(i);
+                if (child instanceof TextView) {
+                    ((TextView) child).setTextColor(tint);
+                } else if (child instanceof androidx.appcompat.widget.AppCompatImageView) {
+                    ImageViewCompat.setImageTintList((android.widget.ImageView) child, ColorStateList.valueOf(tint));
+                }
+            }
         }
     }
 
-    private void setupKeysPanel() {
-        panelKeys.findViewById(R.id.import_key_button).setOnClickListener(v -> {
-            toast("Key import coming soon");
+    private void setupConnectionsPanel() {
+        panelConnections.findViewById(R.id.connections_add_button).setOnClickListener(v -> showConnectionEditor(null));
+        panelConnections.findViewById(R.id.connections_empty_add_button).setOnClickListener(v -> showConnectionEditor(null));
+        View clearSearch = panelConnections.findViewById(R.id.connections_search_clear);
+        if (clearSearch != null) {
+            clearSearch.setOnClickListener(v -> connectionsSearch.setText(""));
+        }
+        connectionsSearch = panelConnections.findViewById(R.id.connections_search);
+        connectionsSearch.addTextChangedListener(new android.text.TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+
+            @Override
+            public void afterTextChanged(android.text.Editable s) {
+                connectionSearchQuery = s.toString().trim();
+                if (clearSearch != null) {
+                    clearSearch.setVisibility(connectionSearchQuery.isEmpty() ? View.GONE : View.VISIBLE);
+                }
+                renderConnectionsPanel();
+            }
         });
+        renderConnectionsPanel();
     }
 
-    private void setupAboutPanel() {
-        TextView versionView = panelAbout.findViewById(R.id.about_version);
-        TextView depsView = panelAbout.findViewById(R.id.about_dependencies_text);
+    private void renderConnectionsPanel() {
+        ViewGroup listContainer = panelConnections.findViewById(R.id.connections_list);
+        View emptyState = panelConnections.findViewById(R.id.connections_empty_state);
+        TextView countView = panelConnections.findViewById(R.id.connections_count);
+        if (countView != null) {
+            countView.setText(savedConnections.size() == 1
+                ? getString(R.string.connections_count_one)
+                : getString(R.string.connections_count_format, savedConnections.size()));
+        }
+        listContainer.removeAllViews();
+
+        List<SavedConnection> filtered = filterConnections();
+        filtered.sort(this::compareConnectionsForDisplay);
+
+        boolean showEmpty = filtered.isEmpty();
+        emptyState.setVisibility(showEmpty ? View.VISIBLE : View.GONE);
+        listContainer.setVisibility(showEmpty ? View.GONE : View.VISIBLE);
+
+        if (showEmpty) {
+            return;
+        }
+
+        List<SavedConnection> favorites = new ArrayList<>();
+        List<SavedConnection> all = new ArrayList<>();
+        for (SavedConnection sc : filtered) {
+            if (sc.favorite) {
+                favorites.add(sc);
+            } else {
+                all.add(sc);
+            }
+        }
+
+        if (!favorites.isEmpty()) {
+            renderConnectionSection(listContainer, getString(R.string.favorites_section), favorites);
+        }
+        renderConnectionSection(listContainer, getString(R.string.all_connections_section), all);
+    }
+
+    private List<SavedConnection> filterConnections() {
+        String query = connectionSearchQuery.toLowerCase();
+        List<SavedConnection> filtered = new ArrayList<>();
+        for (SavedConnection sc : savedConnections) {
+            if (query.isEmpty()) {
+                filtered.add(sc);
+                continue;
+            }
+            String haystack = (sc.label + " " + sc.username + " " + sc.username + "@" + sc.host + " " + sc.host + " " + sc.host + ":" + sc.port).toLowerCase();
+            if (haystack.contains(query)) {
+                filtered.add(sc);
+            }
+        }
+        return filtered;
+    }
+
+    private int compareConnectionsForDisplay(SavedConnection a, SavedConnection b) {
+        boolean aActive = isConnectionActive(a);
+        boolean bActive = isConnectionActive(b);
+        if (aActive != bActive) {
+            return aActive ? -1 : 1;
+        }
+        if (a.lastConnectedAt != b.lastConnectedAt) {
+            return Long.compare(b.lastConnectedAt, a.lastConnectedAt);
+        }
+        return a.host.compareToIgnoreCase(b.host);
+    }
+
+    private void renderConnectionSection(ViewGroup parent, String title, List<SavedConnection> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        TextView header = new TextView(this);
+        header.setText(title);
+        header.setTextColor(ContextCompat.getColor(this, R.color.text_muted_on_dark));
+        header.setTextSize(12f);
+        header.setTypeface(Typeface.DEFAULT_BOLD);
+        header.setAllCaps(true);
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        headerParams.setMargins(0, dp(12), 0, dp(8));
+        header.setLayoutParams(headerParams);
+        parent.addView(header);
+
+        for (SavedConnection sc : items) {
+            parent.addView(createConnectionCard(parent, sc));
+        }
+    }
+
+    private View createConnectionCard(ViewGroup parent, SavedConnection sc) {
+        View itemView = getLayoutInflater().inflate(R.layout.item_connection_card, parent, false);
+        MaterialCardView cardView = itemView.findViewById(R.id.connection_card);
+        TextView labelView = itemView.findViewById(R.id.connection_label);
+        TextView titleView = itemView.findViewById(R.id.connection_title);
+        TextView detailsView = itemView.findViewById(R.id.connection_details);
+        TextView statusText = itemView.findViewById(R.id.connection_status_text);
+        View statusDot = itemView.findViewById(R.id.connection_status_dot);
+        AppCompatImageButton favoriteButton = itemView.findViewById(R.id.connection_favorite);
+        View overflowButton = itemView.findViewById(R.id.connection_overflow);
+
+        if (TextUtils.isEmpty(sc.label)) {
+            labelView.setVisibility(View.GONE);
+        } else {
+            labelView.setVisibility(View.VISIBLE);
+            labelView.setText(sc.label);
+        }
+        titleView.setText(sc.host);
+        detailsView.setText(buildConnectionMetaText(sc));
+        statusText.setText(buildConnectionStatusText(sc));
+        setStatusDot(statusDot, isConnectionActive(sc) || isConnectionRecent(sc));
+        ImageViewCompat.setImageTintList(favoriteButton, ColorStateList.valueOf(ContextCompat.getColor(this, sc.favorite ? R.color.brand : R.color.text_muted_on_dark)));
+        favoriteButton.setImageResource(sc.favorite ? R.drawable.ic_star : R.drawable.ic_star_border);
+
+        cardView.setOnClickListener(v -> connect(sc));
+        cardView.setOnLongClickListener(v -> {
+            showConnectionOptionsMenu(overflowButton, sc);
+            return true;
+        });
+        favoriteButton.setOnClickListener(v -> toggleFavorite(sc));
+        overflowButton.setOnClickListener(v -> showConnectionOptionsMenu(overflowButton, sc));
+        return itemView;
+    }
+
+    private void setStatusDot(View dot, boolean activeOrRecent) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(ContextCompat.getColor(this, activeOrRecent ? R.color.status_connected : R.color.status_unknown));
+        dot.setBackground(bg);
+    }
+
+    private boolean isConnectionActive(SavedConnection sc) {
+        for (SshTerminalSession session : SshSessionRepository.listSessions()) {
+            if (session.isConnected() && TextUtils.equals(session.getDisplayTitle(), sc.username + "@" + sc.host)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isConnectionRecent(SavedConnection sc) {
+        return sc.lastConnectedAt > 0L && System.currentTimeMillis() - sc.lastConnectedAt <= RECENT_CONNECTION_MS;
+    }
+
+    private String buildConnectionMetaText(SavedConnection sc) {
+        return sc.username + " · SSH · Port " + sc.port;
+    }
+
+    private String buildConnectionStatusText(SavedConnection sc) {
+        if (isConnectionActive(sc)) {
+            return getString(R.string.connected_now);
+        }
+        if (sc.lastConnectedAt <= 0L) {
+            return getString(R.string.not_connected_yet);
+        }
+        String relative = formatRelativeTime(sc.lastConnectedAt);
+        if (TextUtils.equals(relative, getString(R.string.relative_time_just_now))) {
+            return getString(R.string.connected_just_now);
+        }
+        return getString(R.string.connected_relative_format, relative);
+    }
+
+    private void showConnectionOptionsMenu(View anchor, SavedConnection sc) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        popup.getMenu().add(0, MENU_FAVORITE, 0, sc.favorite ? R.string.remove_favorite_action : R.string.favorite_action);
+        popup.getMenu().add(0, MENU_EDIT, 1, R.string.edit_action);
+        popup.getMenu().add(0, MENU_DUPLICATE, 2, R.string.duplicate_action);
+        popup.getMenu().add(0, MENU_DELETE, 3, R.string.delete_action);
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == MENU_FAVORITE) {
+                toggleFavorite(sc);
+                return true;
+            } else if (id == MENU_EDIT) {
+                showConnectionEditor(sc);
+                return true;
+            } else if (id == MENU_DUPLICATE) {
+                duplicateConnection(sc);
+                return true;
+            } else if (id == MENU_DELETE) {
+                deleteSavedConnection(sc);
+                return true;
+            }
+            return false;
+        });
+        popup.show();
+    }
+
+    private void toggleFavorite(SavedConnection sc) {
+        for (int i = 0; i < savedConnections.size(); i++) {
+            if (TextUtils.equals(savedConnections.get(i).id, sc.id)) {
+                savedConnections.set(i, savedConnections.get(i).withFavorite(!savedConnections.get(i).favorite));
+                break;
+            }
+        }
+        persistSavedConnections();
+        renderConnectionsPanel();
+    }
+
+    private void duplicateConnection(SavedConnection source) {
+        SavedConnection copy = new SavedConnection(
+            UUID.randomUUID().toString(),
+            source.host,
+            source.port,
+            source.username,
+            source.password,
+            source.label,
+            0L,
+            false
+        );
+        savedConnections.add(0, copy);
+        selectedConnectionId = copy.id;
+        persistSavedConnections();
+        renderConnectionsPanel();
+        toast(getString(R.string.connection_duplicated));
+    }
+
+    private void touchConnection(SavedConnection sc) {
+        boolean updated = false;
+        for (int i = 0; i < savedConnections.size(); i++) {
+            if (TextUtils.equals(savedConnections.get(i).id, sc.id)) {
+                SavedConnection touched = savedConnections.get(i).withLastConnectedAt(System.currentTimeMillis());
+                savedConnections.set(i, touched);
+                updated = true;
+                break;
+            }
+        }
+        if (updated) {
+            persistSavedConnections();
+        }
+    }
+
+    private void setupAppSettingsPanel() {
+        showSettingsMain();
+    }
+
+    private void showSettingsMain() {
+        settingsShowingSubpage = false;
+        ViewGroup subContainer = (ViewGroup) panelSettings.findViewById(R.id.settings_sub_container);
+        View backButton = panelSettings.findViewById(R.id.settings_back_button);
+        TextView titleView = panelSettings.findViewById(R.id.settings_top_title);
+        titleView.setText(R.string.nav_settings);
+        backButton.setVisibility(View.GONE);
+        subContainer.removeAllViews();
+
+        View settingsView = getLayoutInflater().inflate(R.layout.view_settings_main, subContainer, false);
+
+        // Wire up Font size SeekBar
+        SeekBar fontSizeSeek = settingsView.findViewById(R.id.settings_font_size_seek);
+        TextView fontSizeValue = settingsView.findViewById(R.id.settings_font_size_value);
+        int currentFontSize = preferences.getInt(KEY_DEFAULT_FONT_SIZE, DEFAULT_TERMINAL_TEXT_SIZE_SP);
+        fontSizeSeek.setProgress(currentFontSize - MIN_TERMINAL_TEXT_SIZE_SP);
+        fontSizeValue.setText(getString(R.string.font_size_value_format, currentFontSize));
+        fontSizeSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int size = MIN_TERMINAL_TEXT_SIZE_SP + progress;
+                fontSizeValue.setText(getString(R.string.font_size_value_format, size));
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {}
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+                int size = MIN_TERMINAL_TEXT_SIZE_SP + seekBar.getProgress();
+                preferences.edit().putInt(KEY_DEFAULT_FONT_SIZE, size).apply();
+                applyFontSize(size);
+            }
+        });
+
+        // Wire up Cursor style RadioGroup
+        RadioGroup cursorGroup = settingsView.findViewById(R.id.settings_cursor_style_group);
+        int currentCursor = preferences.getInt(KEY_CURSOR_STYLE, DEFAULT_CURSOR_STYLE);
+        if (currentCursor == CURSOR_STYLE_BLOCK) {
+            cursorGroup.check(R.id.settings_cursor_block);
+        } else if (currentCursor == CURSOR_STYLE_UNDERLINE) {
+            cursorGroup.check(R.id.settings_cursor_underline);
+        } else {
+            cursorGroup.check(R.id.settings_cursor_bar);
+        }
+        cursorGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            int style;
+            if (checkedId == R.id.settings_cursor_block) {
+                style = CURSOR_STYLE_BLOCK;
+            } else if (checkedId == R.id.settings_cursor_underline) {
+                style = CURSOR_STYLE_UNDERLINE;
+            } else {
+                style = CURSOR_STYLE_BAR;
+            }
+            preferences.edit().putInt(KEY_CURSOR_STYLE, style).apply();
+            // New sessions will pick this up; for the current session, ask the terminal to redraw.
+            if (terminalView != null) {
+                terminalView.onScreenUpdated();
+            }
+        });
+
+        // Wire up Keep screen on switch
+        MaterialSwitch keepScreenOn = settingsView.findViewById(R.id.settings_keep_screen_on);
+        keepScreenOn.setChecked(preferences.getBoolean(KEY_KEEP_SCREEN_ON, DEFAULT_KEEP_SCREEN_ON));
+        keepScreenOn.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            preferences.edit().putBoolean(KEY_KEEP_SCREEN_ON, isChecked).apply();
+            if (terminalView != null) {
+                terminalView.setKeepScreenOn(isChecked);
+            }
+        });
+
+        // Wire up SSH Keys navigation
+        settingsView.findViewById(R.id.settings_keys_card).setOnClickListener(v -> showSettingsKeysSubpage());
+
+        // About section
+        TextView aboutVersion = settingsView.findViewById(R.id.settings_about_version);
+        TextView aboutDeps = settingsView.findViewById(R.id.settings_about_dependencies);
         try {
             String versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-            versionView.setText(getString(R.string.about_version) + " " + versionName);
+            aboutVersion.setText(getString(R.string.about_version) + " " + versionName);
         } catch (Exception e) {
-            versionView.setText(getString(R.string.about_version));
+            aboutVersion.setText(getString(R.string.about_version));
         }
-        depsView.setText("sshj 0.39.0\nBouncyCastle 1.77\ntermux-terminal-emulator 0.118.0\nJetBrainsMono Nerd Font");
+        aboutDeps.setText("sshj 0.39.0\nBouncyCastle 1.77\ntermux-terminal-emulator 0.118.0\nJetBrainsMono Nerd Font");
+
+        subContainer.addView(settingsView);
+    }
+
+    private void showSettingsKeysSubpage() {
+        settingsShowingSubpage = true;
+        ViewGroup subContainer = (ViewGroup) panelSettings.findViewById(R.id.settings_sub_container);
+        View backButton = panelSettings.findViewById(R.id.settings_back_button);
+        TextView titleView = panelSettings.findViewById(R.id.settings_top_title);
+        titleView.setText(R.string.settings_keys_section);
+        backButton.setVisibility(View.VISIBLE);
+        backButton.setOnClickListener(v -> showSettingsMain());
+        subContainer.removeAllViews();
+
+        View keysView = getLayoutInflater().inflate(R.layout.panel_keys, subContainer, false);
+        keysView.findViewById(R.id.import_key_button).setOnClickListener(v -> toast("Key import coming soon"));
+        subContainer.addView(keysView);
+    }
+
+    private void applyFontSize(int sizeSp) {
+        int clamped = Math.max(MIN_TERMINAL_TEXT_SIZE_SP, Math.min(sizeSp, MAX_TERMINAL_TEXT_SIZE_SP));
+        terminalScaleFactor = clamped / (float) DEFAULT_TERMINAL_TEXT_SIZE_SP;
+        if (terminalView != null) {
+            terminalView.setTextSize(clamped);
+        }
+    }
+
+    private String formatRelativeTime(long timestampMs) {
+        long diffMs = System.currentTimeMillis() - timestampMs;
+        if (diffMs < 60_000L) {
+            return getString(R.string.relative_time_just_now);
+        }
+        long diffMinutes = diffMs / 60_000L;
+        if (diffMinutes < 60) {
+            return getString(R.string.relative_time_minutes_ago, (int) diffMinutes);
+        }
+        long diffHours = diffMinutes / 60L;
+        if (diffHours < 24) {
+            return getString(R.string.relative_time_hours_ago, (int) diffHours);
+        }
+        long diffDays = diffHours / 24L;
+        if (diffDays == 1) {
+            return getString(R.string.relative_time_yesterday);
+        }
+        return getString(R.string.relative_time_days_ago, (int) diffDays);
     }
 
     private void showConnectionPickerDialog() {
         if (savedConnections.isEmpty()) {
-            switchToPanel(R.id.nav_settings);
+            switchToPanel(R.id.nav_connections);
             toast("Add a connection first");
             return;
         }
@@ -569,7 +866,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                     createNewTab(true);
                     connect(sc);
                 } else {
-                    switchToPanel(R.id.nav_settings);
+                    switchToPanel(R.id.nav_connections);
                     showConnectionEditor(null);
                 }
             })
@@ -719,7 +1016,13 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         }
         binding.statusText.setText(R.string.status_connecting);
         targetSession.connect(config);
-        addRecentConnection(config.getHost(), config.getPort(), config.getUsername());
+
+        // Update lastConnectedAt on the saved connection (if any) so it moves to the top of the list.
+        SavedConnection saved = findSavedConnectionById(selectedId);
+        if (saved != null) {
+            touchConnection(saved);
+        }
+
         if (terminalView != null) {
             terminalView.requestFocus();
         }
@@ -963,6 +1266,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void showConnectionEditor(@Nullable SavedConnection existingConnection) {
         View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_connection_editor, binding.getRoot(), false);
         android.widget.TextView titleView = dialogView.findViewById(R.id.dialog_title);
+        TextInputEditText labelInput = dialogView.findViewById(R.id.dialog_label_input);
         TextInputEditText hostInput = dialogView.findViewById(R.id.dialog_host_input);
         TextInputEditText portInput = dialogView.findViewById(R.id.dialog_port_input);
         TextInputEditText usernameInput = dialogView.findViewById(R.id.dialog_username_input);
@@ -975,6 +1279,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         saveButton.setText(existingConnection == null ? R.string.save_connection_action : R.string.update_connection_action);
 
         if (existingConnection != null) {
+            labelInput.setText(existingConnection.label);
             hostInput.setText(existingConnection.host);
             portInput.setText(String.valueOf(existingConnection.port));
             usernameInput.setText(existingConnection.username);
@@ -1003,7 +1308,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 return;
             }
 
-            upsertSavedConnection(config, existingConnection != null ? existingConnection.id : null, true);
+            upsertSavedConnection(config, valueOf(labelInput.getText()), existingConnection != null ? existingConnection.id : null, true);
             dialog.dismiss();
         });
         connectButton.setOnClickListener(v -> {
@@ -1028,6 +1333,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 .setPositiveButton(R.string.save_and_connect_action, (confirmDialog, which) -> {
                     SavedConnection savedConnection = upsertSavedConnection(
                         config,
+                        valueOf(labelInput.getText()),
                         existingConnection != null ? existingConnection.id : null,
                         true
                     );
@@ -1039,17 +1345,30 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         dialog.show();
     }
 
-    private SavedConnection upsertSavedConnection(SshConnectionConfig config, @Nullable String preferredConnectionId, boolean showToast) {
+    private SavedConnection upsertSavedConnection(SshConnectionConfig config, String label, @Nullable String preferredConnectionId, boolean showToast) {
         SavedConnection existingConnection = findMatchingConnection(config.getHost(), config.getPort(), config.getUsername());
         String connectionId = !TextUtils.isEmpty(preferredConnectionId)
             ? preferredConnectionId
             : existingConnection != null ? existingConnection.id : UUID.randomUUID().toString();
+        // Preserve UI metadata when updating an existing connection.
+        long existingLastConnected = 0L;
+        boolean existingFavorite = false;
+        for (SavedConnection sc : savedConnections) {
+            if (TextUtils.equals(sc.id, connectionId)) {
+                existingLastConnected = sc.lastConnectedAt;
+                existingFavorite = sc.favorite;
+                break;
+            }
+        }
         SavedConnection savedConnection = new SavedConnection(
             connectionId,
             config.getHost(),
             config.getPort(),
             config.getUsername(),
-            config.getPassword()
+            config.getPassword(),
+            label,
+            existingLastConnected,
+            existingFavorite
         );
 
         boolean updated = false;
@@ -1138,7 +1457,10 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             host,
             port,
             username,
-            password
+            password,
+            "",
+            0L,
+            false
         );
         savedConnections.add(legacyConnection);
         selectedConnectionId = legacyConnection.id;
@@ -1164,8 +1486,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     }
 
     private void renderSavedConnections() {
-        renderHomePanel();
-        renderSettingsPanel();
+        renderConnectionsPanel();
     }
 
     private void deleteSavedConnection(SavedConnection savedConnection) {
@@ -1498,7 +1819,16 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     @Override
     public Integer getTerminalCursorStyle() {
-        return TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK;
+        int style = preferences.getInt(KEY_CURSOR_STYLE, DEFAULT_CURSOR_STYLE);
+        switch (style) {
+            case CURSOR_STYLE_UNDERLINE:
+                return TerminalEmulator.TERMINAL_CURSOR_STYLE_UNDERLINE;
+            case CURSOR_STYLE_BAR:
+                return TerminalEmulator.TERMINAL_CURSOR_STYLE_BAR;
+            case CURSOR_STYLE_BLOCK:
+            default:
+                return TerminalEmulator.TERMINAL_CURSOR_STYLE_BLOCK;
+        }
     }
 
     private static final class SavedConnection {
@@ -1507,19 +1837,28 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         private static final String JSON_PORT = "port";
         private static final String JSON_USERNAME = "username";
         private static final String JSON_PASSWORD = "password";
+        private static final String JSON_LABEL = "label";
+        private static final String JSON_LAST_CONNECTED_AT = "last_connected_at";
+        private static final String JSON_FAVORITE = "favorite";
 
         private final String id;
         private final String host;
         private final int port;
         private final String username;
         private final String password;
+        final String label;
+        final long lastConnectedAt;
+        final boolean favorite;
 
-        private SavedConnection(String id, String host, int port, String username, String password) {
+        private SavedConnection(String id, String host, int port, String username, String password, String label, long lastConnectedAt, boolean favorite) {
             this.id = id;
             this.host = host;
             this.port = port;
             this.username = username;
             this.password = password;
+            this.label = label == null ? "" : label;
+            this.lastConnectedAt = lastConnectedAt;
+            this.favorite = favorite;
         }
 
         private JSONObject toJson() {
@@ -1530,6 +1869,15 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 jsonObject.put(JSON_PORT, port);
                 jsonObject.put(JSON_USERNAME, username);
                 jsonObject.put(JSON_PASSWORD, password);
+                if (!TextUtils.isEmpty(label)) {
+                    jsonObject.put(JSON_LABEL, label);
+                }
+                if (lastConnectedAt > 0) {
+                    jsonObject.put(JSON_LAST_CONNECTED_AT, lastConnectedAt);
+                }
+                if (favorite) {
+                    jsonObject.put(JSON_FAVORITE, true);
+                }
             } catch (JSONException ignored) {
             }
             return jsonObject;
@@ -1544,19 +1892,33 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             String host = jsonObject.optString(JSON_HOST, "");
             String username = jsonObject.optString(JSON_USERNAME, "");
             String password = jsonObject.optString(JSON_PASSWORD, "");
+            String label = jsonObject.optString(JSON_LABEL, "");
+            long lastConnectedAt = jsonObject.optLong(JSON_LAST_CONNECTED_AT, 0L);
+            boolean favorite = jsonObject.optBoolean(JSON_FAVORITE, false);
             int port = jsonObject.optInt(JSON_PORT, 22);
             if (TextUtils.isEmpty(id) || TextUtils.isEmpty(host) || TextUtils.isEmpty(username)) {
                 return null;
             }
-            return new SavedConnection(id, host, port, username, password);
+            return new SavedConnection(id, host, port, username, password, label, lastConnectedAt, favorite);
         }
 
         private String getDisplayName() {
+            if (!TextUtils.isEmpty(label)) {
+                return label;
+            }
             return username + "@" + host;
         }
 
         private String getDisplayDetails() {
-            return host + ":" + port;
+            return username + "@" + host + ":" + port;
+        }
+
+        private SavedConnection withLastConnectedAt(long timestamp) {
+            return new SavedConnection(id, host, port, username, password, label, timestamp, favorite);
+        }
+
+        private SavedConnection withFavorite(boolean favorite) {
+            return new SavedConnection(id, host, port, username, password, label, lastConnectedAt, favorite);
         }
 
         private SshConnectionConfig toConfig() {
