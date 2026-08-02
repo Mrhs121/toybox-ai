@@ -15,15 +15,38 @@
         android:paddingEnd="24dp"
         android:paddingBottom="14dp">
 
-        <TextView
-            android:id="@+id/connections_brand_label"
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_name"
-            android:textColor="@color/brand"
-            android:textSize="11sp"
-            android:textStyle="bold"
-            android:textAllCaps="true" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:background="@drawable/bg_logo_gradient">
+
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:layout_width="9dp"
+                    android:layout_height="9dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/app_name"
+                    android:src="@drawable/ic_terminal"
+                    android:tint="@color/terminal_background" />
+            </FrameLayout>
+
+            <TextView
+                android:id="@+id/connections_brand_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:letterSpacing="0.08"
+                android:text="@string/app_name"
+                android:textColor="@color/brand"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:textAllCaps="true" />
+        </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -60,6 +83,7 @@
                 android:id="@+id/connections_add_button"
                 android:layout_width="wrap_content"
                 android:layout_height="42dp"
+                android:background="@drawable/bg_button_primary_gradient"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:minWidth="0dp"
@@ -67,10 +91,13 @@
                 android:paddingEnd="18dp"
                 android:text="@string/new_connection_action_full"
                 android:textAllCaps="false"
+                android:textColor="@color/terminal_background"
+                app:backgroundTint="@null"
                 app:icon="@drawable/ic_add"
                 app:iconGravity="textStart"
                 app:iconPadding="8dp"
-                app:iconSize="18dp" />
+                app:iconSize="18dp"
+                app:iconTint="@color/terminal_background" />
         </LinearLayout>
 
         <LinearLayout
@@ -151,9 +178,24 @@
                 android:paddingEnd="32dp"
                 android:visibility="gone">
 
+                <FrameLayout
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:background="@drawable/bg_empty_icon_circle">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/nav_connections"
+                        android:src="@drawable/ic_server"
+                        android:tint="@color/brand" />
+                </FrameLayout>
+
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="20dp"
                     android:text="@string/no_connections_title"
                     android:textColor="@color/text_on_dark"
                     android:textSize="18sp"
@@ -172,9 +214,12 @@
                     android:id="@+id/connections_empty_add_button"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="20dp"
+                    android:layout_marginTop="24dp"
+                    android:background="@drawable/bg_button_primary_gradient"
                     android:text="@string/add_first_connection"
-                    android:textAllCaps="false" />
+                    android:textAllCaps="false"
+                    android:textColor="@color/terminal_background"
+                    app:backgroundTint="@null" />
             </LinearLayout>
         </FrameLayout>
     </ScrollView>

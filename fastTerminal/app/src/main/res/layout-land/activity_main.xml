@@ -17,21 +17,45 @@
             android:id="@+id/sidebar_root"
             android:layout_width="210dp"
             android:layout_height="match_parent"
-            android:background="@color/sidebar_surface"
+            android:background="@drawable/bg_sidebar_gradient"
             android:orientation="vertical"
             android:paddingStart="14dp"
             android:paddingTop="16dp"
             android:paddingEnd="14dp"
             android:paddingBottom="16dp">
 
-            <TextView
-                android:id="@+id/sidebar_brand_label"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/app_name"
-                android:textColor="@color/text_on_dark"
-                android:textSize="18sp"
-                android:textStyle="bold" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <FrameLayout
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:background="@drawable/bg_logo_gradient">
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:layout_gravity="center"
+                        android:contentDescription="@string/app_name"
+                        android:src="@drawable/ic_terminal"
+                        android:tint="@color/terminal_background" />
+                </FrameLayout>
+
+                <TextView
+                    android:id="@+id/sidebar_brand_label"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:layout_weight="1"
+                    android:letterSpacing="0.02"
+                    android:text="@string/app_name"
+                    android:textColor="@color/text_on_dark"
+                    android:textSize="19sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/sidebar_status_text"
@@ -180,51 +204,52 @@
                     android:contentDescription="@string/open_file_browser"
                     android:padding="6dp"
                     android:src="@drawable/ic_file_browser"
-                    android:tint="@null" />
+                    android:tint="@color/text_muted_on_dark" />
             </LinearLayout>
 
-            <FrameLayout
+            <LinearLayout
                 android:id="@+id/content_area"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
-                android:layout_weight="1">
+                android:layout_weight="1"
+                android:orientation="horizontal">
 
-                <include
-                    android:id="@+id/panel_connections"
-                    layout="@layout/panel_connections"
-                    android:layout_width="match_parent"
+                <FrameLayout
+                    android:layout_width="0dp"
                     android:layout_height="match_parent"
-                    android:visibility="visible" />
+                    android:layout_weight="1">
+
+                    <include
+                        android:id="@+id/panel_connections"
+                        layout="@layout/panel_connections"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="visible" />
+
+                    <include
+                        android:id="@+id/panel_terminal"
+                        layout="@layout/panel_terminal"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone" />
+
+                    <include
+                        android:id="@+id/panel_settings"
+                        layout="@layout/panel_app_settings"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:visibility="gone" />
+                </FrameLayout>
 
                 <include
-                    android:id="@+id/panel_terminal"
-                    layout="@layout/panel_terminal"
-                    android:layout_width="match_parent"
+                    android:id="@+id/file_browser_panel"
+                    layout="@layout/drawer_file_browser"
+                    android:layout_width="360dp"
                     android:layout_height="match_parent"
                     android:visibility="gone" />
+            </LinearLayout>
 
-                <include
-                    android:id="@+id/panel_settings"
-                    layout="@layout/panel_app_settings"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:visibility="gone" />
-            </FrameLayout>
-
-            <com.google.android.material.bottomnavigation.BottomNavigationView
-                android:id="@+id/bottom_navigation"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:visibility="gone"
-                app:menu="@menu/bottom_nav_menu" />
         </LinearLayout>
     </LinearLayout>
-
-    <include
-        android:id="@+id/file_browser_panel"
-        layout="@layout/drawer_file_browser"
-        android:layout_width="360dp"
-        android:layout_height="match_parent"
-        android:layout_gravity="end" />
 
 </androidx.drawerlayout.widget.DrawerLayout>

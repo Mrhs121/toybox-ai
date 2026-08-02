@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="rectangle">
-    <solid android:color="#2A3139" />
-    <corners android:radius="4dp" />
-</shape>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <shape android:shape="rectangle">
+            <solid android:color="@color/shortcut_key_surface_pressed" />
+            <corners android:radius="@dimen/shortcut_key_radius" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@color/shortcut_key_surface" />
+            <corners android:radius="@dimen/shortcut_key_radius" />
+        </shape>
+    </item>
+</selector>

@@ -1,39 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/drawer_surface"
     android:orientation="vertical"
     android:fitsSystemWindows="true">
 
+    <!-- Header: home + breadcrumb + edit + refresh -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:background="@color/top_bar_surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
 
-        <TextView
-            android:id="@+id/file_browser_path"
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/file_browser_home"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/file_browser_home"
+            android:padding="10dp"
+            android:src="@drawable/ic_home"
+            android:tint="@color/text_muted_on_dark" />
+
+        <HorizontalScrollView
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:ellipsize="start"
-            android:singleLine="true"
-            android:text="/"
-            android:textColor="@color/text_on_dark"
-            android:textSize="14sp"
-            android:textStyle="bold" />
+            android:overScrollMode="never"
+            android:scrollbars="none">
 
-        <ImageButton
+            <LinearLayout
+                android:id="@+id/file_browser_breadcrumb"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingEnd="8dp" />
+        </HorizontalScrollView>
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/file_browser_edit_path"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/file_browser_edit_path"
+            android:padding="9dp"
+            android:src="@drawable/ic_edit"
+            android:tint="@color/text_muted_on_dark" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/file_browser_refresh"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/refresh"
-            android:padding="6dp"
+            android:padding="9dp"
             android:src="@drawable/ic_refresh"
             android:tint="@color/text_muted_on_dark" />
     </LinearLayout>
@@ -41,18 +67,95 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/tab_bar_surface" />
+        android:background="@color/subtle_divider" />
 
-    <TextView
+    <!-- Search + sort row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:background="@color/drawer_surface"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="10dp"
+        android:paddingEnd="4dp">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:src="@drawable/ic_search"
+            android:tint="@color/text_muted_on_dark" />
+
+        <EditText
+            android:id="@+id/file_browser_search"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:hint="@string/file_browser_search_hint"
+            android:imeOptions="actionSearch"
+            android:inputType="text"
+            android:maxLines="1"
+            android:textColor="@color/text_on_dark"
+            android:textColorHint="@color/text_muted_on_dark"
+            android:textSize="13sp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/file_browser_search_clear"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/clear_search_description"
+            android:padding="9dp"
+            android:src="@drawable/ic_close"
+            android:tint="@color/text_muted_on_dark"
+            android:visibility="gone" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/file_browser_sort"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/file_browser_sort"
+            android:padding="9dp"
+            android:src="@drawable/ic_sort"
+            android:tint="@color/text_muted_on_dark" />
+    </LinearLayout>
+
+    <ProgressBar
+        android:id="@+id/file_browser_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:indeterminate="true"
+        android:progressTint="@color/brand"
+        android:visibility="gone" />
+
+    <LinearLayout
         android:id="@+id/file_browser_empty"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:gravity="center"
-        android:text="@string/file_browser_empty"
-        android:textColor="@color/text_muted_on_dark"
-        android:textSize="13sp"
-        android:visibility="gone" />
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:contentDescription="@string/open_file_browser"
+            android:src="@drawable/ic_folder"
+            android:tint="@color/text_muted_on_dark" />
+
+        <TextView
+            android:id="@+id/file_browser_empty_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:text="@string/file_browser_empty"
+            android:textColor="@color/text_muted_on_dark"
+            android:textSize="13sp" />
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/file_browser_loading"
@@ -60,6 +163,7 @@
         android:layout_height="0dp"
         android:layout_weight="1"
         android:layout_gravity="center"
+        android:indeterminateTint="@color/brand"
         android:visibility="gone" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -72,36 +176,56 @@
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="@color/tab_bar_surface" />
+        android:background="@color/subtle_divider" />
 
+    <!-- Bottom bar: back + current path + upload + new folder -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="48dp"
         android:background="@color/top_bar_surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="8dp"
-        android:paddingEnd="8dp">
+        android:paddingStart="4dp"
+        android:paddingEnd="4dp">
 
-        <ImageButton
-            android:id="@+id/file_browser_upload"
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/file_browser_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/file_browser_back"
+            android:padding="9dp"
+            android:src="@drawable/ic_arrow_back"
+            android:tint="@color/text_muted_on_dark" />
+
+        <TextView
+            android:id="@+id/file_browser_bottom_path"
             android:layout_width="0dp"
-            android:layout_height="36dp"
+            android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:ellipsize="start"
+            android:maxLines="1"
+            android:text="/"
+            android:textColor="@color/text_muted_on_dark"
+            android:textSize="12sp" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/file_browser_upload"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/upload"
-            android:padding="6dp"
+            android:padding="9dp"
             android:src="@drawable/ic_upload"
             android:tint="@color/text_muted_on_dark" />
 
-        <ImageButton
+        <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/file_browser_new_folder"
-            android:layout_width="0dp"
-            android:layout_height="36dp"
-            android:layout_weight="1"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/new_folder"
-            android:padding="6dp"
+            android:padding="9dp"
             android:src="@drawable/ic_create_folder"
             android:tint="@color/text_muted_on_dark" />
     </LinearLayout>

@@ -39,6 +39,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.widget.AppCompatImageButton;
 import androidx.core.content.ContextCompat;
@@ -302,6 +303,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     private void bindActions() {
         binding.panelTerminal.newTabButton.setOnClickListener(v -> showConnectionPickerDialog());
+        binding.panelTerminal.terminalEmptyGoConnections.setOnClickListener(v -> switchToPanel(R.id.nav_connections));
     }
 
     private void setupShortcutBar() {
@@ -340,11 +342,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         binding.showFileBrowserButton.setOnClickListener(v -> {
             SshTerminalSession session = getActiveSession();
             if (session == null || !session.isConnected()) {
-                toast("Connect to SSH first");
+                toast(getString(R.string.error_connect_ssh_first));
                 return;
             }
             fileBrowserDrawer.setSession(session);
-            fileBrowserDrawer.open();
+            fileBrowserDrawer.toggle();
         });
     }
 
@@ -373,18 +375,23 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
             fileBrowserDrawer.uploadFile(cacheFile);
         } catch (Exception e) {
-            Toast.makeText(this, "Upload failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, getString(R.string.upload_failed_format, e.getMessage()), Toast.LENGTH_SHORT).show();
         }
     }
 
     private void setupAdaptiveNavigation() {
-        binding.bottomNavigation.setOnItemSelectedListener(item -> {
-            if (!switchingPanel) {
-                switchToPanel(item.getItemId());
-            }
-            return true;
-        });
         setupSidebarNavigationIfPresent();
+        setupDockNavigationIfPresent();
+    }
+
+    private void setupDockNavigationIfPresent() {
+        View connections = binding.getRoot().findViewById(R.id.dock_connections);
+        if (connections == null) {
+            return;
+        }
+        connections.setOnClickListener(v -> switchToPanel(R.id.nav_connections));
+        binding.getRoot().findViewById(R.id.dock_terminal).setOnClickListener(v -> switchToPanel(R.id.nav_terminal));
+        binding.getRoot().findViewById(R.id.dock_settings).setOnClickListener(v -> switchToPanel(R.id.nav_settings));
     }
 
     private void setupSidebarNavigationIfPresent() {
@@ -402,11 +409,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void switchToPanel(int panelId) {
         switchingPanel = true;
         activePanelId = panelId;
-        panelConnections.setVisibility(panelId == R.id.nav_connections ? View.VISIBLE : View.GONE);
-        panelTerminal.setVisibility(panelId == R.id.nav_terminal ? View.VISIBLE : View.GONE);
-        panelSettings.setVisibility(panelId == R.id.nav_settings ? View.VISIBLE : View.GONE);
         updateNavigationSelection(panelId);
         switchingPanel = false;
+
+        // Cross-fade panels (alpha only — TerminalView is a custom canvas renderer,
+        // translate/slide can leave black gaps on return).
+        fadePanel(panelConnections, panelId == R.id.nav_connections);
+        fadePanel(panelTerminal, panelId == R.id.nav_terminal);
+        fadePanel(panelSettings, panelId == R.id.nav_settings);
 
         if (panelId == R.id.nav_connections) {
             renderConnectionsPanel();
@@ -419,11 +429,53 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         }
     }
 
+    private void fadePanel(View panel, boolean show) {
+        panel.animate().cancel();
+        if (show) {
+            if (panel.getVisibility() != View.VISIBLE) {
+                panel.setAlpha(0f);
+                panel.setVisibility(View.VISIBLE);
+            }
+            panel.animate().alpha(1f).setDuration(200).start();
+        } else {
+            if (panel.getVisibility() == View.VISIBLE) {
+                panel.animate().alpha(0f).setDuration(200)
+                    .withEndAction(() -> {
+                        panel.setVisibility(View.GONE);
+                        panel.setAlpha(1f);
+                    })
+                    .start();
+            }
+        }
+    }
+
     private void updateNavigationSelection(int panelId) {
-        binding.bottomNavigation.setSelectedItemId(panelId);
+        updateDockSelection(panelId);
         updateSidebarItem(R.id.sidebar_nav_connections, panelId == R.id.nav_connections);
         updateSidebarItem(R.id.sidebar_nav_terminal, panelId == R.id.nav_terminal);
         updateSidebarItem(R.id.sidebar_nav_settings, panelId == R.id.nav_settings);
+    }
+
+    private void updateDockSelection(int panelId) {
+        updateDockItem(R.id.dock_connections, R.id.dock_connections_icon, R.id.dock_connections_label, panelId == R.id.nav_connections);
+        updateDockItem(R.id.dock_terminal, R.id.dock_terminal_icon, R.id.dock_terminal_label, panelId == R.id.nav_terminal);
+        updateDockItem(R.id.dock_settings, R.id.dock_settings_icon, R.id.dock_settings_label, panelId == R.id.nav_settings);
+    }
+
+    private void updateDockItem(int itemId, int iconId, int labelId, boolean selected) {
+        View item = binding.getRoot().findViewById(itemId);
+        if (item == null) {
+            return;
+        }
+        android.widget.ImageView icon = item.findViewById(iconId);
+        TextView label = item.findViewById(labelId);
+        int color = ContextCompat.getColor(this, selected ? R.color.brand : R.color.text_muted_on_dark);
+        if (icon != null) {
+            ImageViewCompat.setImageTintList(icon, android.content.res.ColorStateList.valueOf(color));
+        }
+        if (label != null) {
+            label.setTextColor(color);
+        }
     }
 
     private void updateSidebarItem(int viewId, boolean selected) {
@@ -485,9 +537,19 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         View emptyState = panelConnections.findViewById(R.id.connections_empty_state);
         TextView countView = panelConnections.findViewById(R.id.connections_count);
         if (countView != null) {
-            countView.setText(savedConnections.size() == 1
-                ? getString(R.string.connections_count_one)
-                : getString(R.string.connections_count_format, savedConnections.size()));
+            int online = 0;
+            for (SavedConnection sc : savedConnections) {
+                if (isConnectionActive(sc)) {
+                    online++;
+                }
+            }
+            if (savedConnections.isEmpty()) {
+                countView.setText(getString(R.string.connections_count_format, 0));
+            } else if (savedConnections.size() == 1) {
+                countView.setText(getString(R.string.connections_count_one));
+            } else {
+                countView.setText(getString(R.string.connections_status_format, online, savedConnections.size()));
+            }
         }
         listContainer.removeAllViews();
 
@@ -604,9 +666,13 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     }
 
     private void setStatusDot(View dot, boolean activeOrRecent) {
+        if (activeOrRecent) {
+            dot.setBackgroundResource(R.drawable.bg_status_dot_glow);
+            return;
+        }
         GradientDrawable bg = new GradientDrawable();
         bg.setShape(GradientDrawable.OVAL);
-        bg.setColor(ContextCompat.getColor(this, activeOrRecent ? R.color.status_connected : R.color.status_unknown));
+        bg.setColor(ContextCompat.getColor(this, R.color.status_unknown));
         dot.setBackground(bg);
     }
 
@@ -786,6 +852,24 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             }
         });
 
+        // Wire up theme (Appearance)
+        RadioGroup themeGroup = settingsView.findViewById(R.id.settings_theme_group);
+        if (themeGroup != null) {
+            int currentMode = preferences.getInt(FastTerminalApplication.KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_YES);
+            themeGroup.check(currentMode == AppCompatDelegate.MODE_NIGHT_NO
+                ? R.id.settings_theme_light : R.id.settings_theme_dark);
+            themeGroup.setOnCheckedChangeListener((group, checkedId) -> {
+                int newMode = checkedId == R.id.settings_theme_light
+                    ? AppCompatDelegate.MODE_NIGHT_NO
+                    : AppCompatDelegate.MODE_NIGHT_YES;
+                if (newMode != currentMode) {
+                    preferences.edit().putInt(FastTerminalApplication.KEY_THEME_MODE, newMode).apply();
+                    AppCompatDelegate.setDefaultNightMode(newMode);
+                    recreate();
+                }
+            });
+        }
+
         // Wire up SSH Keys navigation
         settingsView.findViewById(R.id.settings_keys_card).setOnClickListener(v -> showSettingsKeysSubpage());
 
@@ -814,7 +898,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         subContainer.removeAllViews();
 
         View keysView = getLayoutInflater().inflate(R.layout.panel_keys, subContainer, false);
-        keysView.findViewById(R.id.import_key_button).setOnClickListener(v -> toast("Key import coming soon"));
+        keysView.findViewById(R.id.import_key_button).setOnClickListener(v -> toast(getString(R.string.key_import_coming_soon)));
         subContainer.addView(keysView);
     }
 
@@ -849,45 +933,121 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void showConnectionPickerDialog() {
         if (savedConnections.isEmpty()) {
             switchToPanel(R.id.nav_connections);
-            toast("Add a connection first");
+            toast(getString(R.string.error_add_connection_first));
             return;
         }
-        String[] names = new String[savedConnections.size() + 1];
-        for (int i = 0; i < savedConnections.size(); i++) {
-            names[i] = savedConnections.get(i).getDisplayName();
-        }
-        names[savedConnections.size()] = getString(R.string.new_connection_option);
 
-        new MaterialAlertDialogBuilder(this)
-            .setTitle(R.string.connection_picker_title)
-            .setItems(names, (dialog, which) -> {
-                if (which < savedConnections.size()) {
-                    SavedConnection sc = savedConnections.get(which);
+        com.google.android.material.bottomsheet.BottomSheetDialog sheet =
+            new com.google.android.material.bottomsheet.BottomSheetDialog(this);
+        View sheetView = getLayoutInflater().inflate(R.layout.view_bottom_sheet_actions, null, false);
+        ((TextView) sheetView.findViewById(R.id.sheet_title)).setText(R.string.connection_picker_title);
+        ViewGroup actions = sheetView.findViewById(R.id.sheet_actions_container);
+
+        for (SavedConnection sc : savedConnections) {
+            View row = createSheetRow(
+                R.drawable.ic_server,
+                sc.getDisplayName(),
+                sc.getDisplayDetails(),
+                isConnectionActive(sc),
+                v -> {
+                    sheet.dismiss();
                     createNewTab(true);
                     connect(sc);
-                } else {
-                    switchToPanel(R.id.nav_connections);
-                    showConnectionEditor(null);
                 }
-            })
-            .show();
+            );
+            actions.addView(row);
+        }
+        actions.addView(createSheetRow(
+            R.drawable.ic_add,
+            getString(R.string.new_connection_option),
+            null,
+            false,
+            v -> {
+                sheet.dismiss();
+                switchToPanel(R.id.nav_connections);
+                showConnectionEditor(null);
+            }
+        ));
+
+        sheet.setContentView(sheetView);
+        sheet.show();
+    }
+
+    private View createSheetRow(int iconRes, String title, String subtitle, boolean active, View.OnClickListener listener) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding(dp(16), dp(12), dp(16), dp(12));
+        android.util.TypedValue tv = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, tv, true);
+        row.setBackgroundResource(tv.resourceId);
+        row.setOnClickListener(listener);
+
+        androidx.appcompat.widget.AppCompatImageView icon = new androidx.appcompat.widget.AppCompatImageView(this);
+        icon.setImageResource(iconRes);
+        int iconSize = dp(22);
+        icon.setLayoutParams(new LinearLayout.LayoutParams(iconSize, iconSize));
+        ImageViewCompat.setImageTintList(icon, android.content.res.ColorStateList.valueOf(
+            ContextCompat.getColor(this, R.color.text_muted_on_dark)));
+
+        LinearLayout textCol = new LinearLayout(this);
+        textCol.setOrientation(LinearLayout.VERTICAL);
+        textCol.setPadding(dp(14), 0, 0, 0);
+        textCol.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+
+        TextView titleView = new TextView(this);
+        titleView.setText(title);
+        titleView.setTextColor(ContextCompat.getColor(this, R.color.text_on_dark));
+        titleView.setTextSize(15f);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        textCol.addView(titleView);
+
+        if (subtitle != null) {
+            TextView subtitleView = new TextView(this);
+            subtitleView.setText(subtitle);
+            subtitleView.setTextColor(ContextCompat.getColor(this, R.color.text_muted_on_dark));
+            subtitleView.setTextSize(12f);
+            subtitleView.setSingleLine(true);
+            subtitleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            textCol.addView(subtitleView);
+        }
+
+        if (active) {
+            View dot = new View(this);
+            int dotSize = dp(8);
+            LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(dotSize, dotSize);
+            dotParams.leftMargin = dp(8);
+            GradientDrawable dotBg = new GradientDrawable();
+            dotBg.setShape(GradientDrawable.OVAL);
+            dotBg.setColor(ContextCompat.getColor(this, R.color.status_connected));
+            dot.setBackground(dotBg);
+            dot.setLayoutParams(dotParams);
+            row.addView(icon);
+            row.addView(textCol);
+            row.addView(dot);
+        } else {
+            row.addView(icon);
+            row.addView(textCol);
+        }
+        return row;
     }
 
     private View createShortcutKeyButton(String label, boolean isModifier) {
         TextView btn = new TextView(this);
         btn.setText(label);
-        btn.setTextSize(12f);
-        btn.setTextColor(ContextCompat.getColor(this, R.color.text_on_dark));
+        btn.setTextSize(getResources().getDimension(R.dimen.shortcut_key_text_size) / getResources().getDisplayMetrics().scaledDensity);
+        btn.setIncludeFontPadding(false);
+        btn.setTextColor(ContextCompat.getColor(this, R.color.terminal_text));
         btn.setGravity(Gravity.CENTER);
-        int hPad = (int) (10 * getResources().getDisplayMetrics().density);
-        int vPad = (int) (5 * getResources().getDisplayMetrics().density);
-        btn.setPadding(hPad, vPad, hPad, vPad);
+        btn.setMinHeight((int) getResources().getDimension(R.dimen.shortcut_key_height));
+        btn.setPadding(dp(10), dp(6), dp(10), dp(6));
         btn.setBackgroundResource(isModifier ? R.drawable.bg_shortcut_key_modifier : R.drawable.bg_shortcut_key);
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.WRAP_CONTENT,
             LinearLayout.LayoutParams.WRAP_CONTENT);
-        int margin = (int) (2 * getResources().getDisplayMetrics().density);
+        int margin = (int) getResources().getDimension(R.dimen.shortcut_key_spacing);
         lp.setMargins(margin, 0, margin, 0);
         btn.setLayoutParams(lp);
 
@@ -1014,7 +1174,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         } else {
             switchToTab(targetSession.getSessionId());
         }
-        binding.statusText.setText(R.string.status_connecting);
+        setStatusText(getString(R.string.status_connecting));
         targetSession.connect(config);
 
         // Update lastConnectedAt on the saved connection (if any) so it moves to the top of the list.
@@ -1208,11 +1368,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             AppCompatImageButton closeButton = tabView.findViewById(R.id.close_tab_button);
 
             boolean active = TextUtils.equals(activeSessionId, sessionId);
-            cardView.setBackgroundColor(ContextCompat.getColor(this, active ? R.color.tab_surface_active : R.color.tab_surface));
-            titleView.setTextColor(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.text_on_dark));
+            cardView.setBackgroundResource(active ? R.drawable.bg_terminal_tab_active : R.drawable.bg_terminal_tab);
+            titleView.setTextColor(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.terminal_text));
             ImageViewCompat.setImageTintList(
                 closeButton,
-                android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.text_muted_on_dark))
+                android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.terminal_text_muted))
             );
             titleView.setText(session.getDisplayTitle());
 
@@ -1226,18 +1386,35 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         SshTerminalSession activeSession = getActiveSession();
         boolean connected = activeSession != null && activeSession.isConnected();
         updateConnectionActions(connected);
+        updateTerminalEmptyOverlay();
         if (activeSession == null) {
-            binding.statusText.setText(R.string.status_idle);
+            setStatusText(getString(R.string.status_idle));
             SshConnectionService.stop(this);
             return;
         }
 
-        binding.statusText.setText(connected ? activeSession.getDisplayTitle() : getString(R.string.status_idle));
+        setStatusText(connected ? activeSession.getDisplayTitle() : getString(R.string.status_idle));
         if (connected) {
             SshConnectionService.start(this);
         } else if (!SshSessionRepository.hasConnectedSessions()) {
             SshConnectionService.stop(this);
         }
+    }
+
+    private void updateTerminalEmptyOverlay() {
+        View overlay = binding.panelTerminal.terminalEmptyOverlay;
+        if (overlay == null) {
+            return;
+        }
+        boolean hasAnyConnection = savedConnections.isEmpty();
+        boolean anyActive = false;
+        for (SshTerminalSession s : SshSessionRepository.listSessions()) {
+            if (s.isConnected()) {
+                anyActive = true;
+                break;
+            }
+        }
+        overlay.setVisibility(hasAnyConnection && !anyActive ? View.VISIBLE : View.GONE);
     }
 
     private void updateConnectionActions(boolean connected) {
@@ -1487,6 +1664,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     private void renderSavedConnections() {
         renderConnectionsPanel();
+        updateTerminalEmptyOverlay();
     }
 
     private void deleteSavedConnection(SavedConnection savedConnection) {
@@ -1538,6 +1716,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         return Math.round(getResources().getDisplayMetrics().density * value);
     }
 
+    private void setStatusText(String text) {
+        binding.statusText.setText(text);
+        TextView sidebar = binding.getRoot().findViewById(R.id.sidebar_status_text);
+        if (sidebar != null) {
+            sidebar.setText(text);
+        }
+    }
+
     private void showPasteMenu(MotionEvent event) {
         View anchor = new View(this);
         FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(1, 1);
@@ -1582,7 +1768,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     public void onSessionTitleChanged(@NonNull SshTerminalSession session, String title) {
         renderTabs();
         if (TextUtils.equals(activeSessionId, session.getSessionId()) && !TextUtils.isEmpty(title)) {
-            binding.statusText.setText(title);
+            setStatusText(title);
         }
     }
 
@@ -1590,7 +1776,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     public void onConnected(@NonNull SshTerminalSession session) {
         renderTabs();
         if (TextUtils.equals(activeSessionId, session.getSessionId())) {
-            binding.statusText.setText(session.getDisplayTitle());
+            setStatusText(session.getDisplayTitle());
             updateConnectionActions(true);
             terminalView.post(terminalView::requestFocus);
         }
@@ -1601,7 +1787,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     public void onDisconnected(@NonNull SshTerminalSession session, String message) {
         renderTabs();
         if (TextUtils.equals(activeSessionId, session.getSessionId())) {
-            binding.statusText.setText(message);
+            setStatusText(message);
             updateConnectionActions(false);
         }
         if (!SshSessionRepository.hasConnectedSessions()) {

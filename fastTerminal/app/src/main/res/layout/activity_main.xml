@@ -80,20 +80,21 @@
                 android:visibility="gone" />
         </FrameLayout>
 
-        <com.google.android.material.bottomnavigation.BottomNavigationView
-            android:id="@+id/bottom_navigation"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="54dp"
-            android:background="@color/top_bar_surface"
-            android:paddingBottom="4dp"
-            app:itemIconTint="@color/bottom_nav_color"
-            app:itemTextColor="@color/bottom_nav_color"
-            app:labelVisibilityMode="labeled"
-            app:itemTextAppearanceActive="@style/BottomNavText"
-            app:itemTextAppearanceInactive="@style/BottomNavText"
-            app:itemPaddingTop="2dp"
-            app:itemPaddingBottom="0dp"
-            app:menu="@menu/bottom_nav_menu" />
+            android:layout_height="wrap_content"
+            android:background="@android:color/transparent"
+            android:paddingStart="20dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="14dp">
+
+            <include
+                android:id="@+id/floating_dock"
+                layout="@layout/view_floating_dock"
+                android:layout_width="match_parent"
+                android:layout_height="62dp" />
+        </FrameLayout>
     </LinearLayout>
 
     <include

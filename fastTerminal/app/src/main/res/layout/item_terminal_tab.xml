@@ -4,7 +4,6 @@
     android:layout_width="wrap_content"
     android:layout_height="32dp"
     android:layout_marginEnd="4dp"
-    android:background="@color/tab_surface"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="12dp"
@@ -17,7 +16,7 @@
         android:ellipsize="end"
         android:maxWidth="220dp"
         android:maxLines="1"
-        android:textColor="@color/text_on_dark"
+        android:textColor="@color/terminal_text"
         android:textSize="13sp"
         android:textStyle="bold" />
 

@@ -1,24 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="44dp"
-    android:background="?attr/selectableItemBackground"
+    android:layout_height="@dimen/file_row_height"
+    android:background="@drawable/bg_file_row"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="12dp"
-    android:paddingEnd="12dp">
+    android:paddingEnd="4dp">
 
     <ImageView
         android:id="@+id/file_icon"
-        android:layout_width="18dp"
-        android:layout_height="18dp"
-        android:src="@drawable/ic_file" />
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:src="@drawable/ic_file"
+        android:tint="@color/text_muted_on_dark" />
 
     <TextView
         android:id="@+id/file_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="10dp"
         android:layout_weight="1"
         android:ellipsize="middle"
         android:singleLine="true"
@@ -30,19 +32,29 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
-        android:textColor="@color/text_muted_on_dark"
-        android:textSize="11sp"
+        android:gravity="end"
         android:minWidth="48dp"
-        android:gravity="end" />
+        android:textColor="@color/text_muted_on_dark"
+        android:textSize="11sp" />
 
     <TextView
         android:id="@+id/file_date"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="6dp"
-        android:textColor="@color/text_muted_on_dark"
-        android:textSize="11sp"
+        android:gravity="end"
         android:minWidth="72dp"
-        android:gravity="end" />
+        android:textColor="@color/text_muted_on_dark"
+        android:textSize="11sp" />
+
+    <androidx.appcompat.widget.AppCompatImageButton
+        android:id="@+id/file_overflow"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/connection_overflow_description"
+        android:padding="9dp"
+        android:src="@drawable/ic_more_vert"
+        android:tint="@color/text_muted_on_dark" />
 
 </LinearLayout>

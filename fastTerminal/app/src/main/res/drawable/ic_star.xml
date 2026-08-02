@@ -5,5 +5,5 @@
     android:viewportWidth="24"
     android:viewportHeight="24"
     android:tint="?attr/colorControlNormal">
-    <path android:fillColor="@android:color/white" android:pathData="M12,17.3L18.2,21 16.5,13.9 22,9.1 14.8,8.5 12,2 9.2,8.5 2,9.1 7.5,13.9 5.8,21z" />
+    <path android:fillColor="@color/text_on_dark" android:pathData="M12,17.3L18.2,21 16.5,13.9 22,9.1 14.8,8.5 12,2 9.2,8.5 2,9.1 7.5,13.9 5.8,21z" />
 </vector>

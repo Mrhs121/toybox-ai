@@ -1,13 +1,37 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.AndroidTerminal" parent="Theme.Material3.Light.NoActionBar">
+    <style name="Theme.AndroidTerminal" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/brand</item>
+        <item name="colorOnPrimary">@color/terminal_background</item>
         <item name="colorSecondary">@color/brand</item>
+        <item name="colorSurface">@color/dialog_surface</item>
+        <item name="colorOnSurface">@color/text_on_dark</item>
+        <item name="colorSurfaceVariant">@color/drawer_surface</item>
+        <item name="colorOnSurfaceVariant">@color/text_muted_on_dark</item>
+        <item name="colorSurfaceContainer">@color/dialog_surface</item>
+        <item name="colorSurfaceContainerLow">@color/dialog_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/card_surface</item>
+        <item name="colorSurfaceContainerHighest">@color/card_surface</item>
+        <item name="colorOutline">@color/drawer_field_stroke</item>
+        <item name="colorOutlineVariant">@color/drawer_field_stroke</item>
+        <item name="android:colorBackground">@color/terminal_background</item>
+        <item name="android:windowBackground">@color/terminal_background</item>
+        <item name="colorError">@color/status_error</item>
         <item name="android:statusBarColor">@color/top_bar_surface</item>
-        <item name="android:navigationBarColor">@android:color/white</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="m">false</item>
+        <item name="android:navigationBarColor">@color/terminal_background</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">true</item>
+        <item name="popupMenuStyle">@style/Widget.AndroidTerminal.PopupMenu</item>
+    </style>
+
+    <style name="Widget.AndroidTerminal.PopupMenu" parent="Widget.Material3.PopupMenu">
+        <item name="android:popupBackground">@drawable/bg_popup_menu</item>
     </style>
 
     <style name="BottomNavText" parent="TextAppearance.Material3.LabelSmall">
         <item name="android:textSize">10sp</item>
+    </style>
+
+    <style name="NoActiveIndicator" parent="Widget.Material3.BottomNavigationView.ActiveIndicator">
+        <item name="android:width">0dp</item>
+        <item name="android:height">0dp</item>
     </style>
 </resources>

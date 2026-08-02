@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">FastTerminal</string>
     <string name="connection_title">SSH Settings</string>
-    <string name="connection_subtitle">Saved locally on this device. Edit once, then reconnect with a single tap.</string>
     <string name="host_hint">Host</string>
     <string name="port_hint">Port</string>
     <string name="username_hint">Username</string>
@@ -20,9 +19,6 @@
     <string name="clipboard_empty">Clipboard is empty</string>
     <string name="missing_connection_info">Host, username and password are required.</string>
     <string name="invalid_port">Port must be a valid number.</string>
-    <string name="default_terminal_banner">Ready. Fill in SSH info above and connect.</string>
-    <string name="show_connection_panel">SSH</string>
-    <string name="open_connection_panel">Open SSH settings</string>
     <string name="save_connection_action">Save</string>
     <string name="update_connection_action">Update</string>
     <string name="new_connection_action">New</string>
@@ -32,12 +28,14 @@
     <string name="connection_saved">Connection saved</string>
     <string name="connection_updated">Connection updated</string>
     <string name="connection_deleted">Connection deleted</string>
-    <string name="saved_connection_section">Saved Connections</string>
     <string name="saved_connections_empty">No saved SSH profiles yet. Tap New to add your first SSH connection.</string>
     <string name="delete_connection_action">Delete connection</string>
     <string name="password_storage_hint">Password is stored only on this device so saved connections can reconnect with a single tap.</string>
     <string name="new_connection_title">New SSH Connection</string>
     <string name="edit_connection_title">Edit SSH Connection</string>
+    <string name="connection_editor_subtitle">Connect to a remote server over SSH</string>
+    <string name="section_server">Server</string>
+    <string name="section_credentials">Credentials</string>
     <string name="save_before_connect_title">Save connection first?</string>
     <string name="save_before_connect_message">Do you want to save this SSH connection before connecting?</string>
     <string name="cancel_action">Cancel</string>
@@ -49,11 +47,8 @@
     <string name="ssh_service_text">SSH connection is running in the background.</string>
     <string name="ssh_service_channel_name">SSH session</string>
     <string name="ssh_service_channel_description">Keeps the SSH terminal alive while the app is in the background.</string>
-    <string name="nav_home">Home</string>
     <string name="nav_terminal">Terminal</string>
     <string name="nav_settings">Settings</string>
-    <string name="nav_keys">Keys</string>
-    <string name="nav_about">About</string>
     <string name="open_file_browser">File Browser</string>
     <string name="file_browser_empty">No files or not connected</string>
     <string name="refresh">Refresh</string>
@@ -69,9 +64,6 @@
     <string name="downloaded_to">Downloaded to %s</string>
     <string name="uploaded_success">Uploaded successfully</string>
     <string name="sftp_error">SFTP error: %s</string>
-    <string name="recent_connections">Recent Connections</string>
-    <string name="saved_connections_title">Saved Connections</string>
-    <string name="no_recent_connections">No recent connections</string>
     <string name="ssh_keys_title">SSH Keys</string>
     <string name="import_key">Import Key</string>
     <string name="no_keys">No SSH keys imported</string>
@@ -97,7 +89,6 @@
     <string name="add_first_connection">Add connection</string>
     <string name="last_connected_never">Never connected</string>
     <string name="last_connected_just_now">Just now</string>
-    <string name="last_connected_format">Last connected %s</string>
     <string name="relative_time_just_now">Just now</string>
     <string name="relative_time_minutes_ago">%dm ago</string>
     <string name="relative_time_hours_ago">%dh ago</string>
@@ -109,6 +100,9 @@
     <!-- App settings panel -->
     <string name="settings_terminal_section">Terminal</string>
     <string name="settings_behavior_section">Behavior</string>
+    <string name="settings_appearance_section">Appearance</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
     <string name="settings_keys_section">SSH Keys</string>
     <string name="settings_about_section">About</string>
     <string name="settings_back_action">Back</string>
@@ -120,13 +114,14 @@
     <string name="cursor_style_bar">Bar</string>
     <string name="keep_screen_on_label">Keep screen on</string>
     <string name="settings_keys_subtitle">Manage SSH key pairs for passwordless login</string>
-    <string name="settings_about_subtitle">FastTerminal version and included libraries</string>
 
     <!-- Product polish -->
     <string name="new_connection_action_full">New connection</string>
     <string name="search_connections_hint">Search by host, label, or user</string>
     <string name="connections_count_format">%d servers</string>
     <string name="connections_count_one">1 server</string>
+    <string name="connections_status_format">%1$d online · %2$d total</string>
+    <string name="connections_status_one">1 server</string>
     <string name="favorites_section">Favorites</string>
     <string name="all_connections_section">All connections</string>
     <string name="connected_now">Connected now</string>
@@ -138,4 +133,27 @@
     <string name="server_icon_description">Server</string>
     <string name="favorite_description">Toggle favorite</string>
     <string name="clear_search_description">Clear search</string>
+    <string name="error_connect_ssh_first">Connect to SSH first</string>
+    <string name="error_add_connection_first">Add a connection first</string>
+    <string name="key_import_coming_soon">Key import coming soon</string>
+    <string name="upload_failed_format">Upload failed: %1$s</string>
+    <string name="terminal_empty_title">No connections yet</string>
+    <string name="terminal_empty_message">Connect to a server to open a terminal session</string>
+    <string name="terminal_empty_action">Go to Connections</string>
+    <string name="file_browser_home">Home</string>
+    <string name="file_browser_edit_path">Edit path</string>
+    <string name="file_browser_back">Back</string>
+    <string name="file_browser_search_hint">Search files</string>
+    <string name="file_browser_sort">Sort</string>
+    <string name="sort_by_name_asc">Name A–Z</string>
+    <string name="sort_by_name_desc">Name Z–A</string>
+    <string name="sort_by_size">Size</string>
+    <string name="sort_by_date">Modified</string>
+    <string name="file_browser_empty_folder">This folder is empty</string>
+    <string name="file_browser_error">Failed to load directory</string>
+    <string name="file_browser_go">Go</string>
+    <string name="file_browser_edit_path_title">Jump to path</string>
+    <string name="upload_destination_format">Upload to %1$s</string>
+    <string name="uploading_format">Uploading %1$s → %2$s</string>
+    <string name="uploaded_to_path">Uploaded %1$s to %2$s</string>
 </resources>

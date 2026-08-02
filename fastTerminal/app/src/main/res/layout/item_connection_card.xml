@@ -28,16 +28,16 @@
             android:id="@+id/connection_server_icon_container"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:background="@color/brand_surface">
+            android:background="@drawable/bg_server_icon_tile">
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/connection_server_icon"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:layout_gravity="center"
                 android:contentDescription="@string/server_icon_description"
                 android:src="@drawable/ic_server"
-                android:tint="@color/brand" />
+                android:tint="@color/terminal_background" />
         </FrameLayout>
 
         <LinearLayout
@@ -67,7 +67,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/text_on_dark"
-                android:textSize="17sp"
+                android:textSize="16sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -78,7 +78,7 @@
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:textColor="@color/text_muted_on_dark"
-                android:textSize="13sp" />
+                android:textSize="12sp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -89,8 +89,8 @@
 
                 <View
                     android:id="@+id/connection_status_dot"
-                    android:layout_width="8dp"
-                    android:layout_height="8dp"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
                     android:background="@color/status_unknown" />
 
                 <TextView
