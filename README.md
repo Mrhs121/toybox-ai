@@ -116,11 +116,11 @@ swift run MarkdownViewer
 
 | 服务器列表 (Connections) | 终端会话 (Terminal) |
 |:---:|:---:|
-| ![FastTerminal Connections](./img/fastTerminal-connections.png) | ![FastTerminal Terminal](./img/fastTerminal-terminal-new.png) |
+| ![FastTerminal Connections](./img/fastterminal-connections-v2.png) | ![FastTerminal Terminal](./img/fastterminal-terminal-v2.png) |
 
 | SFTP 文件传输 (SFTP Browser) | 偏好与设置 (Settings) |
 |:---:|:---:|
-| ![FastTerminal SFTP](./img/fastTerminal-sftp.png) | ![FastTerminal Settings](./img/fastTerminal-settings-new.png) |
+| ![FastTerminal SFTP](./img/fastterminal-sftp-v2.png) | ![FastTerminal Settings](./img/fastterminal-settings-v2.png) |
 
 演示预览：
 [![fastTerminal demo](./img/fastTerminal-demo.gif)](./img/fastTerminal-demo.mp4)

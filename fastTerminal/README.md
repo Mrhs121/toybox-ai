@@ -15,6 +15,16 @@ FastTerminal 是一款专为 Android 横屏平板、外接键盘与鼠标打造�
 - **Nerd Font 字体支持** — 内置 JetBrainsMono Nerd Font，Powerline、Starship 提示符与开发文件图标精准渲染。
 - **后台保活服务** — 前台服务保障 SSH 与长任务在后台平稳运行不掉线。
 
+## 📸 界面预览
+
+| 服务器列表 (Connections) | 终端会话 (Terminal) |
+|:---:|:---:|
+| ![FastTerminal Connections](../img/fastterminal-connections-v2.png) | ![FastTerminal Terminal](../img/fastterminal-terminal-v2.png) |
+
+| SFTP 文件传输 (SFTP Browser) | 偏好与设置 (Settings) |
+|:---:|:---:|
+| ![FastTerminal SFTP](../img/fastterminal-sftp-v2.png) | ![FastTerminal Settings](../img/fastterminal-settings-v2.png) |
+
 ---
 
 ## 🛠️ 构建与安装
@@ -33,4 +43,5 @@ FastTerminal 是一款专为 Android 横屏平板、外接键盘与鼠标打造�
 ```bash
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
+
 
