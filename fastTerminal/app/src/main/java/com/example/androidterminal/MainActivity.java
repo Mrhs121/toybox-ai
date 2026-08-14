@@ -1808,18 +1808,37 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void loadSavedConnections() {
         savedConnections.clear();
         String savedConnectionsJson = preferences.getString(KEY_SAVED_CONNECTIONS, "[]");
-        if (TextUtils.isEmpty(savedConnectionsJson)) {
+        if (TextUtils.isEmpty(savedConnectionsJson) || "[]".equals(savedConnectionsJson)) {
+            migrateLegacyConnectionDraftIfNeeded();
             return;
         }
 
         try {
             JSONArray jsonArray = new JSONArray(savedConnectionsJson);
+            boolean cleanedMock = false;
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.optJSONObject(i);
                 SavedConnection savedConnection = SavedConnection.fromJson(jsonObject);
                 if (savedConnection != null) {
+                    // Filter out legacy hardcoded sample connections
+                    if ("huangsheng".equals(savedConnection.username)
+                            || "HP Home Server".equals(savedConnection.label)
+                            || "Aliyun Prod Gateway".equals(savedConnection.label)
+                            || "Mac Studio M2".equals(savedConnection.label)
+                            || "192.168.5.115".equals(savedConnection.host)
+                            || "192.168.5.88".equals(savedConnection.host)
+                            || "47.98.120.45".equals(savedConnection.host)) {
+                        cleanedMock = true;
+                        continue;
+                    }
                     savedConnections.add(savedConnection);
                 }
+            }
+            if (cleanedMock) {
+                if (savedConnections.isEmpty()) {
+                    selectedConnectionId = null;
+                }
+                persistSavedConnections();
             }
         } catch (JSONException e) {
             Log.w(INPUT_LOG_TAG, "Failed to load saved connections", e);
@@ -1848,53 +1867,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 port,
                 username,
                 password,
-                "HP Home Server",
-                System.currentTimeMillis() - 360000L,
-                true
+                "",
+                System.currentTimeMillis(),
+                false
             );
             savedConnections.add(legacyConnection);
             selectedConnectionId = legacyConnection.id;
             persistSavedConnections();
-            return;
         }
-
-        // Default sample hosts for fresh installs
-        SavedConnection hpServer = new SavedConnection(
-            UUID.randomUUID().toString(),
-            "192.168.5.115",
-            22,
-            "hs",
-            "",
-            "HP Home Server",
-            System.currentTimeMillis() - 360000L,
-            true
-        );
-        SavedConnection aliyunServer = new SavedConnection(
-            UUID.randomUUID().toString(),
-            "47.98.120.45",
-            22,
-            "root",
-            "",
-            "Aliyun Prod Gateway",
-            System.currentTimeMillis() - 86400000L,
-            true
-        );
-        SavedConnection macStudio = new SavedConnection(
-            UUID.randomUUID().toString(),
-            "192.168.5.88",
-            22,
-            "huangsheng",
-            "",
-            "Mac Studio M2",
-            0L,
-            false
-        );
-
-        savedConnections.add(hpServer);
-        savedConnections.add(aliyunServer);
-        savedConnections.add(macStudio);
-        selectedConnectionId = hpServer.id;
-        persistSavedConnections();
     }
 
     private void persistSavedConnections() {

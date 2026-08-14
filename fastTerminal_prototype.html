@@ -1,0 +1,1742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastTerminal 2.0 - 交互式设计原型 (Design Prototype)</title>
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      /* Theme: Deep Modern Cyber / Slate */
+      --bg-canvas: #090D14;
+      --bg-sidebar: #0D131F;
+      --bg-card: #131B2A;
+      --bg-card-hover: #192336;
+      --bg-card-active: #1D2A40;
+      --bg-glass: rgba(19, 27, 42, 0.75);
+      --bg-input: #0F1624;
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-focus: rgba(16, 185, 129, 0.4);
+      --border-hover: rgba(255, 255, 255, 0.15);
+      
+      /* Primary Accent: Emerald / Neon Teal */
+      --accent-primary: #10B981;
+      --accent-primary-hover: #059669;
+      --accent-glow: rgba(16, 185, 129, 0.25);
+      --accent-cyan: #06B6D4;
+      --accent-cyan-glow: rgba(6, 182, 212, 0.2);
+      --accent-purple: #A855F7;
+      --accent-amber: #F59E0B;
+      --accent-rose: #F43F5E;
+
+      /* Typography */
+      --text-primary: #F8FAFC;
+      --text-secondary: #94A3B8;
+      --text-muted: #64748B;
+      --text-dim: #475569;
+
+      /* Radii */
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-pill: 9999px;
+
+      /* Shadows */
+      --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--border-subtle);
+      --shadow-card-hover: 0 10px 30px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-hover), 0 0 20px -2px var(--accent-glow);
+      --shadow-float: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+    }
+
+    /* Terminal Color Themes */
+    .theme-tokyonight {
+      --term-bg: #1a1b26;
+      --term-fg: #a9b1d6;
+      --term-cursor: #c0caf5;
+      --term-black: #32344a;
+      --term-red: #f7768e;
+      --term-green: #9ece6a;
+      --term-yellow: #e0af68;
+      --term-blue: #7aa2f7;
+      --term-magenta: #bb9af7;
+      --term-cyan: #7dcfff;
+    }
+    .theme-catppuccin {
+      --term-bg: #1e1e2e;
+      --term-fg: #cdd6f4;
+      --term-cursor: #f5e0dc;
+      --term-black: #45475a;
+      --term-red: #f38ba8;
+      --term-green: #a6e3a1;
+      --term-yellow: #f9e2af;
+      --term-blue: #89b4fa;
+      --term-magenta: #cba6f7;
+      --term-cyan: #94e2d5;
+    }
+    .theme-dracula {
+      --term-bg: #282a36;
+      --term-fg: #f8f8f2;
+      --term-cursor: #f8f8f2;
+      --term-black: #6272a4;
+      --term-red: #ff5555;
+      --term-green: #50fa7b;
+      --term-yellow: #f1fa8c;
+      --term-blue: #bd93f9;
+      --term-magenta: #ff79c6;
+      --term-cyan: #8be9fd;
+    }
+    .theme-onedark {
+      --term-bg: #1e222a;
+      --term-fg: #abb2bf;
+      --term-cursor: #528bff;
+      --term-black: #5c6370;
+      --term-red: #e06c75;
+      --term-green: #98c379;
+      --term-yellow: #e5c07b;
+      --term-blue: #61afef;
+      --term-magenta: #c678dd;
+      --term-cyan: #56b6c2;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #05070B;
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* Top Demo Controller Bar */
+    .prototype-controller {
+      width: 100%;
+      max-width: 1200px;
+      background: rgba(19, 27, 42, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      z-index: 100;
+    }
+    .proto-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .proto-badge {
+      background: linear-gradient(135deg, #10B981, #06B6D4);
+      color: #000;
+      font-weight: 700;
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: var(--radius-pill);
+      letter-spacing: 0.05em;
+    }
+    .proto-heading {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .proto-modes {
+      display: flex;
+      background: #090D14;
+      padding: 4px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-subtle);
+      gap: 4px;
+    }
+    .mode-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .mode-btn.active {
+      background: var(--bg-card-active);
+      color: var(--accent-primary);
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+    }
+    .mode-btn:hover:not(.active) {
+      color: var(--text-primary);
+    }
+
+    /* Device Container */
+    .device-wrapper {
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+    
+    /* Device Form Factors */
+    .device-frame {
+      background: var(--bg-canvas);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 36px;
+      box-shadow: 0 25px 60px -10px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255,255,255,0.05);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    /* Tablet Landscape (Current view mode) */
+    .device-wrapper.mode-tablet .device-frame {
+      width: 1120px;
+      height: 720px;
+    }
+    /* Phone Portrait Mode */
+    .device-wrapper.mode-phone .device-frame {
+      width: 410px;
+      height: 840px;
+      border-radius: 48px;
+      border-width: 8px;
+      border-color: #1E293B;
+    }
+    /* Full Fluid Mode */
+    .device-wrapper.mode-fluid .device-frame {
+      width: 100%;
+      max-width: 1300px;
+      height: 780px;
+    }
+
+    /* Simulated Status Bar */
+    .android-status-bar {
+      height: 28px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      background: transparent;
+      z-index: 50;
+    }
+    .status-left {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .status-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* App Workspace Root */
+    .app-root {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ==========================================================
+       SIDEBAR NAVIGATION (TABLET / DESKTOP)
+       ========================================================== */
+    .app-sidebar {
+      width: 240px;
+      background: var(--bg-sidebar);
+      border-right: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 14px;
+      gap: 12px;
+      flex-shrink: 0;
+      transition: all 0.3s ease;
+    }
+    .device-wrapper.mode-phone .app-sidebar {
+      display: none; /* In phone mode, replaced by sleek bottom dock */
+    }
+
+    /* App Brand Header */
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      margin-bottom: 6px;
+    }
+    .brand-icon-box {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #10B981, #06B6D4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #041014;
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    .brand-text-wrap {
+      display: flex;
+      flex-direction: column;
+    }
+    .brand-name {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .brand-version {
+      font-size: 9px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-primary);
+      background: rgba(16, 185, 129, 0.12);
+      padding: 1px 5px;
+      border-radius: var(--radius-pill);
+    }
+    .brand-status {
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .status-indicator-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-dim);
+    }
+    .status-indicator-dot.active {
+      background: var(--accent-primary);
+      box-shadow: 0 0 8px var(--accent-primary);
+      animation: pulse-dot 2s infinite;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.3); opacity: 0.7; }
+    }
+
+    /* Nav Items */
+    .nav-section-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      margin-top: 6px;
+    }
+    .nav-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      border: 1px solid transparent;
+    }
+    .nav-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2;
+    }
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+    }
+    .nav-item.active {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-primary);
+      border-color: rgba(16, 185, 129, 0.2);
+      font-weight: 600;
+    }
+    .nav-count-badge {
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 7px;
+      border-radius: var(--radius-pill);
+      background: #090D14;
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+    }
+    .nav-item.active .nav-count-badge {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--accent-primary);
+      border-color: transparent;
+    }
+
+    /* Sidebar Footer */
+    .sidebar-footer {
+      margin-top: auto;
+      background: #090D14;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .quick-host-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .quick-stat-label {
+      font-size: 10px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+    .quick-stat-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .btn-icon-soft {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-icon-soft:hover {
+      background: var(--bg-card);
+      color: var(--accent-primary);
+      border-color: var(--border-hover);
+    }
+
+    /* ==========================================================
+       MAIN CONTENT CONTAINER & PANELS
+       ========================================================== */
+    .app-main-viewport {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+      background: var(--bg-canvas);
+    }
+
+    /* Header Bar */
+    .view-top-header {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+      background: rgba(9, 13, 20, 0.7);
+      backdrop-filter: blur(12px);
+      z-index: 20;
+    }
+    .device-wrapper.mode-phone .view-top-header {
+      padding: 12px 16px;
+    }
+    .header-title-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .header-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-primary-action {
+      background: linear-gradient(135deg, #10B981, #0E9E8F);
+      color: #041014;
+      border: none;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px var(--accent-glow);
+      transition: all 0.2s ease;
+    }
+    .btn-primary-action:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+    }
+
+    /* Scrollable Panel Area */
+    .panel-scroll-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .device-wrapper.mode-phone .panel-scroll-content {
+      padding: 16px;
+      padding-bottom: 90px; /* space for phone bottom dock */
+    }
+
+    /* Search & Filter Pills Bar */
+    .filter-search-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .search-input-box {
+      flex: 1;
+      min-width: 240px;
+      height: 42px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 10px;
+      transition: all 0.2s;
+    }
+    .search-input-box:focus-within {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+      background: #111827;
+    }
+    .search-input-box input {
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-primary);
+      font-size: 13px;
+      width: 100%;
+    }
+    .search-input-box input::placeholder {
+      color: var(--text-muted);
+    }
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+    }
+    .filter-pill {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .filter-pill:hover {
+      background: var(--bg-card-hover);
+      color: var(--text-primary);
+    }
+    .filter-pill.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+
+    /* ==========================================================
+       ADAPTIVE CONNECTIONS GRID
+       ========================================================== */
+    .connections-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+    }
+    .device-wrapper.mode-phone .connections-grid {
+      grid-template-columns: 1fr;
+    }
+
+    /* Modern Server Card */
+    .server-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: var(--shadow-card);
+    }
+    .server-card:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--border-hover);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card-hover);
+    }
+    .server-card.active-session {
+      border-color: rgba(16, 185, 129, 0.5);
+      background: linear-gradient(180deg, rgba(16, 185, 129, 0.06), var(--bg-card));
+    }
+
+    /* Card Top Header */
+    .server-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .server-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 182, 212, 0.15));
+      border: 1px solid rgba(16, 185, 129, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent-primary);
+      flex-shrink: 0;
+    }
+    .server-avatar.amber {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(244, 63, 94, 0.15));
+      border-color: rgba(245, 158, 11, 0.2);
+      color: var(--accent-amber);
+    }
+    .server-avatar.purple {
+      background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(6, 182, 212, 0.15));
+      border-color: rgba(168, 85, 247, 0.2);
+      color: var(--accent-purple);
+    }
+    .server-info-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .server-hero-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tag-badge {
+      font-size: 9.5px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .tag-badge.prod {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--accent-rose);
+      border: 1px solid rgba(244, 63, 94, 0.3);
+    }
+    .tag-badge.home {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-primary);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .tag-badge.cloud {
+      background: rgba(6, 182, 212, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+    
+    /* Host Monospace Chip */
+    .server-host-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .server-host-chip span {
+      color: var(--text-muted);
+    }
+
+    /* Card Actions (Star & Menu) */
+    .card-top-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-star {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: var(--radius-sm);
+      transition: all 0.2s;
+    }
+    .btn-star.starred {
+      color: var(--accent-amber);
+    }
+    .btn-star:hover {
+      color: var(--accent-amber);
+    }
+
+    /* Card Meta Row */
+    .server-meta-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #0B111A;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      font-size: 11.5px;
+    }
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+    .status-pill.online {
+      color: var(--accent-primary);
+    }
+    .status-pill.offline {
+      color: var(--text-muted);
+    }
+    .ping-latency {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+    }
+
+    /* Card Quick Actions Bar */
+    .server-card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 4px;
+    }
+    .btn-card-quick {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 10px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .btn-card-quick:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-color: var(--border-hover);
+    }
+    .btn-card-quick.primary {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: var(--accent-primary);
+    }
+    .btn-card-quick.primary:hover {
+      background: var(--accent-primary);
+      color: #041014;
+    }
+
+    /* ==========================================================
+       PANEL: TERMINAL VIEW (INTERACTIVE)
+       ========================================================== */
+    .terminal-view-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: var(--term-bg, #1a1b26);
+      transition: background 0.3s;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    /* Terminal Tab Bar */
+    .terminal-tabs-bar {
+      height: 42px;
+      background: rgba(0, 0, 0, 0.35);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      gap: 6px;
+      overflow-x: auto;
+    }
+    .term-tab {
+      height: 32px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .term-tab.active {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.12);
+      color: var(--text-primary);
+    }
+    .term-tab-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 6px var(--accent-primary);
+    }
+    .term-tab-close {
+      opacity: 0.5;
+      padding: 2px;
+      border-radius: 4px;
+    }
+    .term-tab-close:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .term-add-tab-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .term-add-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+    }
+
+    /* Terminal Quick Control Header */
+    .term-controls-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 14px;
+      background: rgba(0, 0, 0, 0.2);
+      font-size: 11px;
+      color: var(--text-muted);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+    .term-theme-selector {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      outline: none;
+    }
+
+    /* Terminal Console Screen Output */
+    .terminal-screen {
+      flex: 1;
+      padding: 16px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13.5px;
+      line-height: 1.6;
+      color: var(--term-fg, #abb2bf);
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    .term-prompt {
+      color: var(--accent-primary);
+      font-weight: 600;
+    }
+    .term-host {
+      color: var(--accent-cyan);
+    }
+    .term-path {
+      color: var(--accent-purple);
+    }
+    .term-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 16px;
+      background: var(--accent-primary);
+      vertical-align: middle;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* ==========================================================
+       ERGONOMIC MECHANICAL KEYBOARD SHORTCUT BAR
+       ========================================================== */
+    .terminal-shortcut-bar {
+      background: #0D131F;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    }
+    .shortcut-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .shortcut-row::-webkit-scrollbar {
+      display: none;
+    }
+    
+    /* Chiclet Keycap */
+    .keycap-btn {
+      height: 36px;
+      min-width: 44px;
+      padding: 0 10px;
+      background: linear-gradient(180deg, #1E293B, #141E2E);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-bottom: 2px solid rgba(0, 0, 0, 0.6);
+      border-radius: var(--radius-sm);
+      color: #E2E8F0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.1s ease;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    }
+    .keycap-btn:active {
+      transform: translateY(2px);
+      border-bottom-width: 1px;
+      background: #0F172A;
+    }
+    .keycap-btn.modifier-active {
+      background: linear-gradient(180deg, #059669, #047857);
+      border-color: #34D399;
+      color: #FFFFFF;
+      box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+    }
+    .keycap-btn.accent {
+      color: var(--accent-cyan);
+    }
+
+    /* ==========================================================
+       SFTP DRAWER (SIDE INSPECTOR / FILE EXPLORER)
+       ========================================================== */
+    .sftp-drawer {
+      width: 340px;
+      background: var(--bg-sidebar);
+      border-left: 1px solid var(--border-subtle);
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s ease;
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 40;
+      box-shadow: var(--shadow-float);
+    }
+    .sftp-drawer.hidden {
+      transform: translateX(100%);
+    }
+    .sftp-header {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .sftp-breadcrumbs {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: #090D14;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-subtle);
+      overflow-x: auto;
+    }
+    .crumb-pill {
+      color: var(--accent-cyan);
+      cursor: pointer;
+    }
+    .sftp-file-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .file-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 10px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background 0.15s;
+      font-size: 12.5px;
+    }
+    .file-row:hover {
+      background: var(--bg-card-hover);
+    }
+    .file-row-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .file-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .file-name {
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* ==========================================================
+       PHONE FLOATING DOCK
+       ========================================================== */
+    .phone-bottom-dock {
+      display: none;
+      position: absolute;
+      bottom: 16px;
+      left: 20px;
+      right: 20px;
+      height: 60px;
+      background: rgba(19, 27, 42, 0.9);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-pill);
+      align-items: center;
+      justify-content: space-around;
+      padding: 0 12px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.05);
+      z-index: 60;
+    }
+    .device-wrapper.mode-phone .phone-bottom-dock {
+      display: flex;
+    }
+    .dock-tab-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .dock-tab-btn.active {
+      color: var(--accent-primary);
+    }
+    .dock-tab-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Helper Utilities */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Interactive Mode Controller -->
+  <div class="prototype-controller">
+    <div class="proto-title">
+      <span class="proto-badge">FASTTERMINAL 2.0</span>
+      <span class="proto-heading">UI/UX 重构交互式原型设计</span>
+    </div>
+    
+    <div class="proto-modes">
+      <button class="mode-btn active" onclick="switchDeviceMode('tablet')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        平板/横屏模式 (当前实机)
+      </button>
+      <button class="mode-btn" onclick="switchDeviceMode('phone')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        手机竖屏模式
+      </button>
+      <button class="mode-btn" onclick="switchDeviceMode('fluid')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        大屏全展开
+      </button>
+    </div>
+  </div>
+
+  <!-- Device Frame Mockup -->
+  <div class="device-wrapper mode-tablet" id="deviceWrapper">
+    <div class="device-frame theme-tokyonight" id="deviceFrame">
+      
+      <!-- Simulated Android Status Bar -->
+      <div class="android-status-bar">
+        <span class="status-left">02:55</span>
+        <div class="status-right">
+          <span>5G • WiFi 6</span>
+          <span>74% 🔋</span>
+        </div>
+      </div>
+
+      <!-- App Root Container -->
+      <div class="app-root">
+
+        <!-- ================= SIDEBAR NAVIGATION ================= -->
+        <aside class="app-sidebar">
+          
+          <div class="sidebar-brand">
+            <div class="brand-icon-box">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            </div>
+            <div class="brand-text-wrap">
+              <div class="brand-name">
+                FastTerminal
+                <span class="brand-version">v2.0</span>
+              </div>
+              <div class="brand-status">
+                <span class="status-indicator-dot active"></span>
+                <span>SSH Agent Ready</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="nav-section-title">Navigation</div>
+          <ul class="nav-list">
+            <li class="nav-item active" id="navConnections" onclick="switchTab('connections')">
+              <div class="nav-item-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                <span>服务器列表</span>
+              </div>
+              <span class="nav-count-badge">4</span>
+            </li>
+            
+            <li class="nav-item" id="navTerminal" onclick="switchTab('terminal')">
+              <div class="nav-item-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                <span>终端会话</span>
+              </div>
+              <span class="nav-count-badge" style="background: rgba(16,185,129,0.2); color: var(--accent-primary);">1 在线</span>
+            </li>
+
+            <li class="nav-item" id="navSftp" onclick="toggleSftpDrawer()">
+              <div class="nav-item-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span>SFTP 文件传输</span>
+              </div>
+            </li>
+
+            <li class="nav-item" id="navSettings" onclick="switchTab('settings')">
+              <div class="nav-item-left">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <span>偏好与设置</span>
+              </div>
+            </li>
+          </ul>
+
+          <div class="sidebar-footer">
+            <div class="quick-host-stats">
+              <span class="quick-stat-label">Active Host</span>
+              <span class="quick-stat-val">192.168.5.115</span>
+            </div>
+            <button class="btn-icon-soft" title="SSH Key Manager">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+            </button>
+          </div>
+        </aside>
+
+        <!-- ================= MAIN VIEWPORT ================= -->
+        <main class="app-main-viewport">
+
+          <!-- ################# PANEL 1: CONNECTIONS ################# -->
+          <div id="panelConnections" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            
+            <!-- Top Header -->
+            <div class="view-top-header">
+              <div class="header-title-wrap">
+                <div class="header-title">
+                  <span>服务器连接 (Hosts)</span>
+                </div>
+                <div class="header-subtitle">已配置 4 个远端主机 • 1 个会话连接中</div>
+              </div>
+
+              <div class="header-actions">
+                <button class="btn-primary-action" onclick="alert('新建连接弹窗：支持导入 SSH Config、密码与私钥')">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  <span>新建主机</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="panel-scroll-content">
+              
+              <!-- Search & Filter Row -->
+              <div class="filter-search-row">
+                <div class="search-input-box">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  <input type="text" placeholder="快速检索主机名、IP、标签 (Cmd + K)" />
+                </div>
+
+                <div class="filter-pills">
+                  <button class="filter-pill active">全部 (4)</button>
+                  <button class="filter-pill">⭐ 收藏</button>
+                  <button class="filter-pill">🏠 家庭局域网</button>
+                  <button class="filter-pill">🚀 生产/云端</button>
+                </div>
+              </div>
+
+              <!-- Grid of Servers -->
+              <div class="connections-grid">
+
+                <!-- CARD 1 (The user's actual HP Server) -->
+                <div class="server-card active-session" onclick="connectToServer('HP Home Server', 'hs@192.168.5.115:22')">
+                  <div class="server-card-top">
+                    <div class="server-avatar">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+                    </div>
+                    <div class="server-info-main">
+                      <div class="server-hero-name">
+                        <span>HP Home Server</span>
+                        <span class="tag-badge home">Homelab</span>
+                      </div>
+                      <div class="server-host-chip">
+                        <span>hs@</span>192.168.5.115<span>:22</span>
+                      </div>
+                    </div>
+                    <div class="card-top-controls">
+                      <button class="btn-star starred" title="Favorite">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="server-meta-row">
+                    <div class="status-pill online">
+                      <span class="status-indicator-dot active"></span>
+                      <span>已连接 (6分钟前)</span>
+                    </div>
+                    <div class="ping-latency">⚡ 1.8ms</div>
+                  </div>
+
+                  <div class="server-card-actions" onclick="event.stopPropagation()">
+                    <button class="btn-card-quick primary" onclick="connectToServer('HP Home Server', 'hs@192.168.5.115:22')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                      <span>进入终端</span>
+                    </button>
+                    <button class="btn-card-quick" onclick="toggleSftpDrawer()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      <span>SFTP 文件</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- CARD 2 -->
+                <div class="server-card" onclick="connectToServer('Aliyun Production', 'root@47.98.120.45:22')">
+                  <div class="server-card-top">
+                    <div class="server-avatar amber">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                    </div>
+                    <div class="server-info-main">
+                      <div class="server-hero-name">
+                        <span>Aliyun Prod Gateway</span>
+                        <span class="tag-badge prod">Prod</span>
+                      </div>
+                      <div class="server-host-chip">
+                        <span>root@</span>47.98.120.45<span>:22</span>
+                      </div>
+                    </div>
+                    <div class="card-top-controls">
+                      <button class="btn-star starred" title="Favorite">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="server-meta-row">
+                    <div class="status-pill offline">
+                      <span class="status-indicator-dot"></span>
+                      <span>空闲 (昨日连接)</span>
+                    </div>
+                    <div class="ping-latency">⚡ 28ms</div>
+                  </div>
+
+                  <div class="server-card-actions" onclick="event.stopPropagation()">
+                    <button class="btn-card-quick primary" onclick="connectToServer('Aliyun Prod Gateway', 'root@47.98.120.45:22')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                      <span>连接</span>
+                    </button>
+                    <button class="btn-card-quick" onclick="toggleSftpDrawer()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      <span>SFTP</span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- CARD 3 -->
+                <div class="server-card" onclick="connectToServer('Mac Studio M2', 'dev@192.168.5.88:22')">
+                  <div class="server-card-top">
+                    <div class="server-avatar purple">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    </div>
+                    <div class="server-info-main">
+                      <div class="server-hero-name">
+                        <span>Mac Studio M2</span>
+                        <span class="tag-badge cloud">Workstation</span>
+                      </div>
+                      <div class="server-host-chip">
+                        <span>dev@</span>192.168.5.88<span>:22</span>
+                      </div>
+                    </div>
+                    <div class="card-top-controls">
+                      <button class="btn-star" title="Favorite">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="server-meta-row">
+                    <div class="status-pill offline">
+                      <span class="status-indicator-dot"></span>
+                      <span>空闲</span>
+                    </div>
+                    <div class="ping-latency">⚡ 1.2ms</div>
+                  </div>
+
+                  <div class="server-card-actions" onclick="event.stopPropagation()">
+                    <button class="btn-card-quick primary" onclick="connectToServer('Mac Studio M2', 'dev@192.168.5.88:22')">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                      <span>连接</span>
+                    </button>
+                    <button class="btn-card-quick" onclick="toggleSftpDrawer()">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                      <span>SFTP</span>
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+
+          <!-- ################# PANEL 2: TERMINAL ################# -->
+          <div id="panelTerminal" class="terminal-view-container hidden">
+            
+            <!-- Terminal Tab Bar -->
+            <div class="terminal-tabs-bar">
+              <div class="term-tab active">
+                <span class="term-tab-dot"></span>
+                <span>hs@HP: ~</span>
+                <span class="term-tab-close">✕</span>
+              </div>
+              <div class="term-tab">
+                <span>root@Aliyun: /var/log</span>
+                <span class="term-tab-close">✕</span>
+              </div>
+              <button class="term-add-tab-btn" title="New Terminal Tab">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+            </div>
+
+            <!-- Terminal Controls Bar -->
+            <div class="term-controls-header">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span>Session: <strong style="color:var(--text-primary)">HP (192.168.5.115)</strong></span>
+                <span>UTF-8 • xterm-256color</span>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span>主题配色:</span>
+                <select class="term-theme-selector" onchange="changeTerminalTheme(this.value)">
+                  <option value="tokyonight">Tokyo Night (默认)</option>
+                  <option value="catppuccin">Catppuccin Mocha</option>
+                  <option value="dracula">Dracula Dark</option>
+                  <option value="onedark">One Dark Pro</option>
+                </select>
+                <button class="btn-icon-soft" style="width:24px;height:24px;" onclick="toggleSftpDrawer()" title="Open SFTP Drawer">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Terminal Output Console -->
+            <div class="terminal-screen" id="termScreen">
+<span style="color:#7aa2f7;">Welcome to Ubuntu 24.04.1 LTS (GNU/Linux 6.8.0-45-generic x86_64)</span>
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+
+  System information as of Sat Aug 15 02:55:10 CST 2026
+
+  System load:  0.18, 0.22, 0.19            Processes:               248
+  Usage of /:   34.2% of 468.20GB           Users logged in:         1
+  Memory usage: 18%                         IPv4 address for enp3s0: 192.168.5.115
+  Swap usage:   0%
+
+<span class="term-prompt">hs@HP</span>:<span class="term-path">~</span>$ neofetch
+<span style="color:#7aa2f7;">            .-/+oossssoo+/-.               </span><span style="color:#bb9af7; font-weight:bold;">hs@HP</span>
+<span style="color:#7aa2f7;">        `:+ssssssssssssssssss+:`           </span>------------------
+<span style="color:#7aa2f7;">      -+ssssssssssssssssssyyssss+-         </span><span style="color:#7dcfff; font-weight:600;">OS:</span> Ubuntu 24.04.1 LTS x86_64
+<span style="color:#7aa2f7;">    .ossssssssssssssssssdMMMNysssso.       </span><span style="color:#7dcfff; font-weight:600;">Host:</span> HP ProDesk 600 G4 DM
+<span style="color:#7aa2f7;">   /ssssssssssshdmmNNmmyNMMMMhssssss/      </span><span style="color:#7dcfff; font-weight:600;">Kernel:</span> 6.8.0-45-generic
+<span style="color:#7aa2f7;">  +ssssssssshmydMMMMMMMNddddyssssssss+     </span><span style="color:#7dcfff; font-weight:600;">Uptime:</span> 14 days, 6 hours, 32 mins
+<span style="color:#7aa2f7;"> /sssssssshNMMMyhhyyyyhmNMMMNhssssssss/    </span><span style="color:#7dcfff; font-weight:600;">Packages:</span> 1420 (dpkg), 12 (docker)
+<span style="color:#7aa2f7;">.ssssssssdMMMNhsssssssssshNMMMdssssssss.   </span><span style="color:#7dcfff; font-weight:600;">Shell:</span> zsh 5.9
+<span style="color:#7aa2f7;">+sssshhhyNMMNyssssssssssssyNMMMysssssss+   </span><span style="color:#7dcfff; font-weight:600;">CPU:</span> Intel i7-8700T (12) @ 4.000GHz
+<span style="color:#7aa2f7;">ossyNMMMNyMMhsssssssssssssshmmmhssssssso   </span><span style="color:#7dcfff; font-weight:600;">GPU:</span> Intel UHD Graphics 630
+<span style="color:#7aa2f7;">ossyNMMMNyMMhsssssssssssssshmmmhssssssso   </span><span style="color:#7dcfff; font-weight:600;">Memory:</span> 5824MiB / 31920MiB
+
+<span class="term-prompt">hs@HP</span>:<span class="term-path">~</span>$ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+NAMES            STATUS                  PORTS
+vaultwarden      Up 14 days (healthy)    0.0.0.0:8080->80/tcp
+nginx-proxy      Up 14 days              0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp
+postgres-db      Up 14 days              0.0.0.0:5432->5432/tcp
+
+<span class="term-prompt">hs@HP</span>:<span class="term-path">~</span>$ <span class="term-cursor"></span>
+            </div>
+
+            <!-- Ergonomic Mechanical Shortcut Keyboard Bar -->
+            <div class="terminal-shortcut-bar">
+              <div class="shortcut-row">
+                <button class="keycap-btn" onclick="toggleModifier(this)">ESC</button>
+                <button class="keycap-btn modifier-active" onclick="toggleModifier(this)">CTRL</button>
+                <button class="keycap-btn" onclick="toggleModifier(this)">ALT</button>
+                <button class="keycap-btn" onclick="insertKey('TAB')">TAB</button>
+                <button class="keycap-btn accent" onclick="insertKey('|')">|</button>
+                <button class="keycap-btn accent" onclick="insertKey('~')">~</button>
+                <button class="keycap-btn accent" onclick="insertKey('/')">/</button>
+                <button class="keycap-btn accent" onclick="insertKey('-')">-</button>
+                <button class="keycap-btn" onclick="insertKey('▲')">▲</button>
+                <button class="keycap-btn" onclick="insertKey('▼')">▼</button>
+                <button class="keycap-btn" onclick="insertKey('◀')">◀</button>
+                <button class="keycap-btn" onclick="insertKey('▶')">▶</button>
+              </div>
+              <div class="shortcut-row">
+                <button class="keycap-btn" onclick="insertKey('Ctrl+C')">^C (Kill)</button>
+                <button class="keycap-btn" onclick="insertKey('Ctrl+D')">^D (Exit)</button>
+                <button class="keycap-btn" onclick="insertKey('Ctrl+Z')">^Z (Bg)</button>
+                <button class="keycap-btn" onclick="insertKey('btop\n')">⚡ htop</button>
+                <button class="keycap-btn" onclick="insertKey('docker ps\n')">🐳 docker</button>
+                <button class="keycap-btn" onclick="insertKey('git status\n')">🌿 git</button>
+                <button class="keycap-btn" onclick="insertKey('clear\n')">🧹 clear</button>
+              </div>
+            </div>
+
+          </div>
+
+
+          <!-- ################# PANEL 3: SETTINGS ################# -->
+          <div id="panelSettings" class="hidden" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+            <div class="view-top-header">
+              <div class="header-title-wrap">
+                <div class="header-title">偏好与设置 (Preferences)</div>
+                <div class="header-subtitle">定制终端外观、SSH 密钥与行为参数</div>
+              </div>
+            </div>
+
+            <div class="panel-scroll-content">
+              
+              <!-- Settings Card 1: Appearance -->
+              <div class="server-card">
+                <div style="font-size:14px; font-weight:700; color:var(--text-primary);">🎨 终端视觉与主题</div>
+                <div style="font-size:12px; color:var(--text-muted);">自定义终端调色方案、光标样式与字体大小</div>
+                
+                <div style="display:flex; flex-direction:column; gap:12px; margin-top:8px;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px; color:var(--text-secondary);">默认字体大小: <strong style="color:var(--accent-primary);">14 pt</strong></span>
+                    <input type="range" min="10" max="24" value="14" style="width:180px;" />
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:13px; color:var(--text-secondary);">光标样式</span>
+                    <div style="display:flex; gap:6px;">
+                      <button class="filter-pill active">▋ 方块 (Block)</button>
+                      <button class="filter-pill">_ 下划线</button>
+                      <button class="filter-pill">| 竖线</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Settings Card 2: SSH Security -->
+              <div class="server-card">
+                <div style="font-size:14px; font-weight:700; color:var(--text-primary);">🔑 SSH 密钥与安全性</div>
+                <div style="font-size:12px; color:var(--text-muted);">Ed25519 / RSA 密钥对生成与硬件加密存储</div>
+
+                <div style="display:flex; gap:10px; margin-top:8px;">
+                  <button class="btn-card-quick primary" style="flex:unset; padding:8px 16px;">+ 生成新 Ed25519 密钥</button>
+                  <button class="btn-card-quick" style="flex:unset; padding:8px 16px;">导入私钥文件 (.pem/.id_rsa)</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+
+          <!-- ================= SFTP SIDE DRAWER ================= -->
+          <div class="sftp-drawer hidden" id="sftpDrawer">
+            <div class="sftp-header">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-cyan)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                <span style="font-weight:700; font-size:14px;">SFTP 文件浏览器</span>
+              </div>
+              <button class="btn-icon-soft" onclick="toggleSftpDrawer()">✕</button>
+            </div>
+
+            <div class="sftp-breadcrumbs">
+              <span class="crumb-pill">/</span>
+              <span>home</span>
+              <span class="crumb-pill">/</span>
+              <span class="crumb-pill">hs</span>
+              <span class="crumb-pill">/</span>
+              <span>docker-compose</span>
+            </div>
+
+            <div class="sftp-file-list">
+              <div class="file-row">
+                <div class="file-row-left">
+                  <span style="color:var(--accent-cyan)">📁</span>
+                  <span class="file-name">.. (上级目录)</span>
+                </div>
+              </div>
+              <div class="file-row">
+                <div class="file-row-left">
+                  <span style="color:var(--accent-cyan)">📁</span>
+                  <span class="file-name">vaultwarden</span>
+                </div>
+                <span class="file-meta">dir</span>
+              </div>
+              <div class="file-row">
+                <div class="file-row-left">
+                  <span style="color:var(--accent-cyan)">📁</span>
+                  <span class="file-name">nginx-data</span>
+                </div>
+                <span class="file-meta">dir</span>
+              </div>
+              <div class="file-row">
+                <div class="file-row-left">
+                  <span>📄</span>
+                  <span class="file-name">docker-compose.yml</span>
+                </div>
+                <span class="file-meta">2.4 KB</span>
+              </div>
+              <div class="file-row">
+                <div class="file-row-left">
+                  <span style="color:var(--accent-amber)">⚡</span>
+                  <span class="file-name">deploy.sh</span>
+                </div>
+                <span class="file-meta">750 B</span>
+              </div>
+              <div class="file-row">
+                <div class="file-row-left">
+                  <span>🔒</span>
+                  <span class="file-name">.env</span>
+                </div>
+                <span class="file-meta">420 B</span>
+              </div>
+            </div>
+
+            <div style="padding: 12px; border-top: 1px solid var(--border-subtle); display:flex; gap:8px;">
+              <button class="btn-card-quick primary">⬆ 上传文件</button>
+              <button class="btn-card-quick">+ 新建文件</button>
+            </div>
+          </div>
+
+        </main>
+
+        <!-- ================= PHONE FLOATING BOTTOM DOCK ================= -->
+        <div class="phone-bottom-dock">
+          <button class="dock-tab-btn active" id="dockConnections" onclick="switchTab('connections')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
+            <span>主机</span>
+          </button>
+
+          <button class="dock-tab-btn" id="dockTerminal" onclick="switchTab('terminal')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            <span>终端</span>
+          </button>
+
+          <button class="dock-tab-btn" onclick="toggleSftpDrawer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <span>SFTP</span>
+          </button>
+
+          <button class="dock-tab-btn" id="dockSettings" onclick="switchTab('settings')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span>设置</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Tab switching
+    function switchTab(tabId) {
+      document.getElementById('panelConnections').classList.add('hidden');
+      document.getElementById('panelTerminal').classList.add('hidden');
+      document.getElementById('panelSettings').classList.add('hidden');
+
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.dock-tab-btn').forEach(el => el.classList.remove('active'));
+
+      if (tabId === 'connections') {
+        document.getElementById('panelConnections').classList.remove('hidden');
+        document.getElementById('navConnections')?.classList.add('active');
+        document.getElementById('dockConnections')?.classList.add('active');
+      } else if (tabId === 'terminal') {
+        document.getElementById('panelTerminal').classList.remove('hidden');
+        document.getElementById('navTerminal')?.classList.add('active');
+        document.getElementById('dockTerminal')?.classList.add('active');
+      } else if (tabId === 'settings') {
+        document.getElementById('panelSettings').classList.remove('hidden');
+        document.getElementById('navSettings')?.classList.add('active');
+        document.getElementById('dockSettings')?.classList.add('active');
+      }
+    }
+
+    // Connect to server demo action
+    function connectToServer(name, host) {
+      switchTab('terminal');
+      // Append some simulated text
+      const screen = document.getElementById('termScreen');
+      const time = new Date().toLocaleTimeString();
+      screen.innerHTML += `\n<span style="color:#a6e3a1;">[${time}] Connecting to ${name} (${host})... Connected via Ed25519.</span>\n<span class="term-prompt">hs@HP</span>:<span class="term-path">~</span>$ <span class="term-cursor"></span>`;
+      screen.scrollTop = screen.scrollHeight;
+    }
+
+    // Toggle SFTP Drawer
+    function toggleSftpDrawer() {
+      const drawer = document.getElementById('sftpDrawer');
+      drawer.classList.toggle('hidden');
+    }
+
+    // Switch Device Form Factor (Tablet / Phone / Fluid)
+    function switchDeviceMode(mode) {
+      const wrapper = document.getElementById('deviceWrapper');
+      wrapper.className = 'device-wrapper mode-' + mode;
+      
+      document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+    }
+
+    // Modifier Key Toggle
+    function toggleModifier(btn) {
+      btn.classList.toggle('modifier-active');
+    }
+
+    // Key Insertion Simulation
+    function insertKey(key) {
+      const screen = document.getElementById('termScreen');
+      if (key === 'clear\n') {
+        screen.innerHTML = `<span class="term-prompt">hs@HP</span>:<span class="term-path">~</span>$ <span class="term-cursor"></span>`;
+      } else {
+        screen.innerHTML += `<span style="color:#7dcfff;">${key}</span>`;
+      }
+      screen.scrollTop = screen.scrollHeight;
+    }
+
+    // Theme Selector
+    function changeTerminalTheme(themeName) {
+      const frame = document.getElementById('deviceFrame');
+      frame.className = 'device-frame theme-' + themeName;
+    }
+  </script>
+</body>
+</html>
