@@ -1483,27 +1483,19 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             return false;
         }
 
-        boolean isShift = event.isShiftPressed();
-
         switch (event.getKeyCode()) {
-            case KeyEvent.KEYCODE_B:
-                if (isShift) {
-                    // Ctrl+Shift+B toggles sidebar, leaving Ctrl+B exclusively for tmux / emacs
-                    toggleSidebar();
-                    return true;
-                }
-                return false;
             case KeyEvent.KEYCODE_T:
-                if (isShift) {
-                    showConnectionPickerDialog();
-                    return true;
-                }
-                return false;
+                showConnectionPickerDialog();
+                return true;
             case KeyEvent.KEYCODE_W:
-                if (isShift) {
-                    if (activeSessionId != null) {
-                        closeTab(activeSessionId);
-                    }
+                if (activeSessionId != null) {
+                    closeTab(activeSessionId);
+                }
+                return true;
+            case KeyEvent.KEYCODE_B:
+                if (event.isShiftPressed()) {
+                    // Ctrl+Shift+B toggles sidebar, leaving single Ctrl+B exclusively for tmux / emacs
+                    toggleSidebar();
                     return true;
                 }
                 return false;
@@ -1514,6 +1506,9 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_PAGE_DOWN:
                 switchToAdjacentTab(1);
+                return true;
+            case KeyEvent.KEYCODE_TAB:
+                switchToAdjacentTab(event.isShiftPressed() ? -1 : 1);
                 return true;
             default:
                 return false;
