@@ -128,6 +128,15 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private boolean settingsShowingSubpage = false;
     private EditText connectionsSearch;
     private String connectionSearchQuery = "";
+    private static final String KEY_SIDEBAR_COLLAPSED = "sidebar_collapsed";
+    private boolean sidebarCollapsed = false;
+    private View sidebarRoot;
+    private View sidebarDivider;
+    private View sidebarCollapseButton;
+    private View termSidebarToggle;
+    private View connectionsSidebarToggle;
+    private View settingsSidebarToggle;
+
     private static final int FILTER_ALL = 0;
     private static final int FILTER_FAV = 1;
     private static final int FILTER_HOMELAB = 2;
@@ -479,6 +488,62 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         if (terminal != null) terminal.setOnClickListener(v -> switchToPanel(R.id.nav_terminal));
         if (sftp != null) sftp.setOnClickListener(v -> toggleSftpDrawer());
         if (settings != null) settings.setOnClickListener(v -> switchToPanel(R.id.nav_settings));
+
+        sidebarRoot = binding.getRoot().findViewById(R.id.sidebar_root);
+        sidebarDivider = binding.getRoot().findViewById(R.id.sidebar_divider);
+        sidebarCollapseButton = binding.getRoot().findViewById(R.id.sidebar_collapse_button);
+        termSidebarToggle = binding.panelTerminal.termSidebarToggleButton;
+        connectionsSidebarToggle = panelConnections.findViewById(R.id.connections_sidebar_toggle);
+        settingsSidebarToggle = panelSettings.findViewById(R.id.settings_sidebar_toggle);
+
+        sidebarCollapsed = preferences.getBoolean(KEY_SIDEBAR_COLLAPSED, false);
+
+        if (sidebarCollapseButton != null) {
+            sidebarCollapseButton.setOnClickListener(v -> toggleSidebar());
+        }
+        if (termSidebarToggle != null) {
+            termSidebarToggle.setOnClickListener(v -> toggleSidebar());
+        }
+        if (connectionsSidebarToggle != null) {
+            connectionsSidebarToggle.setOnClickListener(v -> toggleSidebar());
+        }
+        if (settingsSidebarToggle != null) {
+            settingsSidebarToggle.setOnClickListener(v -> toggleSidebar());
+        }
+
+        updateSidebarVisibility(false);
+    }
+
+    public void toggleSidebar() {
+        setSidebarCollapsed(!sidebarCollapsed, true);
+    }
+
+    public void setSidebarCollapsed(boolean collapsed, boolean animate) {
+        sidebarCollapsed = collapsed;
+        preferences.edit().putBoolean(KEY_SIDEBAR_COLLAPSED, sidebarCollapsed).apply();
+        updateSidebarVisibility(animate);
+    }
+
+    private void updateSidebarVisibility(boolean animate) {
+        if (sidebarRoot == null) return;
+        boolean isTablet = isTabletOrLandscape();
+        if (!isTablet) {
+            return;
+        }
+
+        if (sidebarCollapsed) {
+            sidebarRoot.setVisibility(View.GONE);
+            if (sidebarDivider != null) sidebarDivider.setVisibility(View.GONE);
+            if (termSidebarToggle != null) termSidebarToggle.setVisibility(View.VISIBLE);
+            if (connectionsSidebarToggle != null) connectionsSidebarToggle.setVisibility(View.VISIBLE);
+            if (settingsSidebarToggle != null) settingsSidebarToggle.setVisibility(View.VISIBLE);
+        } else {
+            sidebarRoot.setVisibility(View.VISIBLE);
+            if (sidebarDivider != null) sidebarDivider.setVisibility(View.VISIBLE);
+            if (termSidebarToggle != null) termSidebarToggle.setVisibility(View.GONE);
+            if (connectionsSidebarToggle != null) connectionsSidebarToggle.setVisibility(View.GONE);
+            if (settingsSidebarToggle != null) settingsSidebarToggle.setVisibility(View.GONE);
+        }
     }
 
     private void switchToPanel(int panelId) {
@@ -1409,19 +1474,36 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             return false;
         }
 
+        boolean isShift = event.isShiftPressed();
+
         switch (event.getKeyCode()) {
-            case KeyEvent.KEYCODE_T:
-                showConnectionPickerDialog();
-                return true;
-            case KeyEvent.KEYCODE_W:
-                if (activeSessionId != null) {
-                    closeTab(activeSessionId);
+            case KeyEvent.KEYCODE_B:
+                if (isShift) {
+                    // Ctrl+Shift+B toggles sidebar, leaving Ctrl+B exclusively for tmux / emacs
+                    toggleSidebar();
+                    return true;
                 }
-                return true;
+                return false;
+            case KeyEvent.KEYCODE_T:
+                if (isShift) {
+                    showConnectionPickerDialog();
+                    return true;
+                }
+                return false;
+            case KeyEvent.KEYCODE_W:
+                if (isShift) {
+                    if (activeSessionId != null) {
+                        closeTab(activeSessionId);
+                    }
+                    return true;
+                }
+                return false;
             case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_PAGE_UP:
                 switchToAdjacentTab(-1);
                 return true;
             case KeyEvent.KEYCODE_DPAD_RIGHT:
+            case KeyEvent.KEYCODE_PAGE_DOWN:
                 switchToAdjacentTab(1);
                 return true;
             default:

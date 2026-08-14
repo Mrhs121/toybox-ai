@@ -56,6 +56,16 @@
                     android:textColor="@color/text_on_dark"
                     android:textSize="18sp"
                     android:textStyle="bold" />
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/sidebar_collapse_button"
+                    android:layout_width="32dp"
+                    android:layout_height="32dp"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:contentDescription="收起侧边栏"
+                    android:padding="6dp"
+                    android:src="@drawable/ic_sidebar_toggle"
+                    android:tint="@color/text_muted_on_dark" />
             </LinearLayout>
 
             <LinearLayout
@@ -118,6 +128,7 @@
         </LinearLayout>
 
         <View
+            android:id="@+id/sidebar_divider"
             android:layout_width="1dp"
             android:layout_height="match_parent"
             android:background="@color/subtle_divider" />
