@@ -6,10 +6,11 @@
     android:background="@color/terminal_surface"
     android:orientation="vertical">
 
+    <!-- Top Tab Bar -->
     <LinearLayout
         android:id="@+id/tab_bar"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/tab_bar_height"
+        android:layout_height="40dp"
         android:background="@color/tab_bar_surface"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -34,11 +35,11 @@
 
         <androidx.appcompat.widget.AppCompatImageButton
             android:id="@+id/new_tab_button"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:contentDescription="@string/new_tab_description"
-            android:padding="8dp"
+            android:padding="7dp"
             android:src="@drawable/ic_add"
             android:tint="@color/text_muted_on_dark" />
     </LinearLayout>
@@ -48,6 +49,66 @@
         android:layout_height="1dp"
         android:background="@color/subtle_divider" />
 
+    <!-- Terminal Quick Controls & Session Header (from prototype) -->
+    <LinearLayout
+        android:id="@+id/term_controls_header"
+        android:layout_width="match_parent"
+        android:layout_height="34dp"
+        android:background="#0A0E17"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="12dp"
+        android:paddingEnd="10dp">
+
+        <TextView
+            android:id="@+id/term_session_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:maxLines="1"
+            android:text="会话: 就绪 • UTF-8"
+            android:textColor="@color/text_secondary"
+            android:textSize="11.5sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🎨 主题: "
+            android:textColor="@color/text_muted_on_dark"
+            android:textSize="11sp" />
+
+        <Spinner
+            android:id="@+id/term_theme_spinner"
+            android:layout_width="wrap_content"
+            android:layout_height="26dp"
+            android:background="@drawable/bg_filter_pill"
+            android:dropDownWidth="170dp"
+            android:overlapAnchor="false"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:popupBackground="@drawable/bg_popup_menu"
+            android:spinnerMode="dropdown" />
+
+        <androidx.appcompat.widget.AppCompatImageButton
+            android:id="@+id/term_open_sftp_button"
+            android:layout_width="30dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="10dp"
+            android:background="@drawable/bg_filter_pill"
+            android:contentDescription="@string/open_file_browser"
+            android:padding="5dp"
+            android:src="@drawable/ic_file_browser"
+            android:tint="@color/brand_cyan" />
+    </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/subtle_divider" />
+
+    <!-- Terminal Canvas Container -->
     <FrameLayout
         android:id="@+id/terminal_container"
         android:layout_width="match_parent"
@@ -82,16 +143,16 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
+                android:layout_marginTop="18dp"
                 android:text="@string/terminal_empty_title"
                 android:textColor="@color/terminal_text"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="6dp"
                 android:gravity="center"
                 android:text="@string/terminal_empty_message"
                 android:textColor="@color/terminal_text_muted"
@@ -101,11 +162,12 @@
                 android:id="@+id/terminal_empty_go_connections"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="24dp"
+                android:layout_marginTop="20dp"
                 android:background="@drawable/bg_button_primary_gradient"
                 android:text="@string/terminal_empty_action"
                 android:textAllCaps="false"
-                android:textColor="@color/terminal_background"
+                android:textColor="#041014"
+                android:textStyle="bold"
                 app:backgroundTint="@null" />
         </LinearLayout>
     </FrameLayout>
@@ -115,16 +177,17 @@
         android:layout_height="1dp"
         android:background="@color/subtle_divider" />
 
+    <!-- Mechanical Keycap Shortcut Bar -->
     <LinearLayout
         android:id="@+id/shortcut_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/tab_bar_surface"
+        android:background="#0D131F"
         android:orientation="vertical"
-        android:paddingTop="5dp"
-        android:paddingBottom="5dp"
         android:paddingStart="8dp"
-        android:paddingEnd="8dp">
+        android:paddingTop="6dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="6dp">
 
         <HorizontalScrollView
             android:layout_width="match_parent"
@@ -143,7 +206,7 @@
         <HorizontalScrollView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="3dp"
+            android:layout_marginTop="4dp"
             android:overScrollMode="never"
             android:scrollbars="none">
 

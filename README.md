@@ -101,30 +101,30 @@ swift run MarkdownViewer
 
 **核心特性：**
 
-- **平板级侧边栏导航** — Connections、Terminal、Settings 三大面板，横屏下使用左侧导航，连接管理更像桌面工具
-- **产品化连接管理** — 服务器卡片展示主机、用户、协议、端口、连接状态和收藏分组，支持搜索、收藏、编辑、复制、删除
-- **多 Tab 会话** — 同时打开多条远程连接，顶部 tab 栏快速切换，每个 tab 独立终端内容
-- **类 iTerm2 快捷键** — `Ctrl+T` 新建 tab、`Ctrl+W` 关闭 tab、`Ctrl+←/→` 切换 tab，和桌面终端操作习惯一致
-- **PC 级复制粘贴** — 鼠标左键拖拽选中文本，右键弹出粘贴菜单；支持 `Ctrl+C/V` 复制粘贴，`Esc` 不会误触发 Android 返回
-- **快捷虚拟按键栏** — 底部两行快捷键：特殊字符（`~` `/` `|` `\` 等）、方向键、`Ctrl+C/D/Z` 等组合键，手机软键盘输入不再痛苦
-- **Nerd Font 支持** — 内置 JetBrainsMono Nerd Font，远程服务器的 Powerline、文件图标等符号正常显示
-- **SFTP 文件浏览器** — 右侧抽屉浏览远程文件，支持上传、下载、新建文件夹、重命名、删除
-- **应用设置** — 支持终端字号、光标样式、屏幕常亮等常用终端行为设置
+- **平板级侧边栏导航** — 服务器列表、终端会话、SFTP 文件传输、偏好与设置四大面板，横屏下使用左侧导航，连接管理更像桌面级生产力工具
+- **现代化服务器列表与圆角矩阵** — 20dp 卡片超椭圆圆角设计，单行内嵌式搜索与过滤胶囊（全部 / ⭐ 常用 / 🏠 局域网 / 🚀 云端），实时显示在线状态、延迟与最近连接时间
+- **终端多主题实时切换** — 内置 One Dark、Tokyo Night、Catppuccin Mocha、Dracula、Solarized Dark、Nord、Monokai 等 7 大经典配色，支持实时下拉切换
+- **多 Tab 会话管理** — 同时打开多条远程连接，顶部 Tab 栏快速切换，支持 `Ctrl+T` 新建、`Ctrl+W` 关闭、`Ctrl+←/→` 快速切换
+- **机械按键质感快捷栏** — 底部两行快捷键（特殊字符、修饰键、方向键、常用组合键及一键宏），手机与平板软键盘输入极度舒适
+- **PC 级鼠标交互与剪贴板** — 鼠标左键拖拽选中文本，右键弹出粘贴菜单；支持 `Ctrl+C/V` 快捷键，物理 `Esc` 键不会误触 Android 返回
+- **伴随式 SFTP 文件浏览器** — 平板横屏下伴随终端分屏展示，支持远程文件浏览、面包屑导航、文件上传、新建文件夹、重命名与删除
+- **Nerd Font 字体支持** — 内置 JetBrainsMono Nerd Font，终端下 Powerline、Starship 提示符与开发图标完美渲染
 
 下载 APK：[GitHub Releases](https://github.com/Mrhs121/toybox-ai/releases)
 
-### 新版界面预览
+### 界面预览
 
-| Connections | Terminal | Settings |
-|:---:|:---:|:---:|
-| ![FastTerminal Connections](./img/fastTerminal-connections.png) | ![FastTerminal Terminal](./img/fastTerminal-terminal-new.png) | ![FastTerminal Settings](./img/fastTerminal-settings-new.png) |
+| 服务器列表 (Connections) | 终端会话 (Terminal) |
+|:---:|:---:|
+| ![FastTerminal Connections](./img/fastTerminal-connections.png) | ![FastTerminal Terminal](./img/fastTerminal-terminal-new.png) |
 
-### SFTP 文件浏览器
-
-![SFTP file browser](./img/fastTerminal-sftp.jpg)
+| SFTP 文件传输 (SFTP Browser) | 偏好与设置 (Settings) |
+|:---:|:---:|
+| ![FastTerminal SFTP](./img/fastTerminal-sftp.png) | ![FastTerminal Settings](./img/fastTerminal-settings-new.png) |
 
 演示预览：
 [![fastTerminal demo](./img/fastTerminal-demo.gif)](./img/fastTerminal-demo.mp4)
 
 完整视频：
 [fastTerminal-demo.mp4](./img/fastTerminal-demo.mp4)
+

@@ -86,10 +86,22 @@ public final class TerminalView extends View {
 
     private final boolean mAccessibilityEnabled;
 
+    private int mPadLeft;
+    private int mPadTop;
+    private int mPadRight;
+    private int mPadBottom;
+    private TerminalTheme mTheme = TerminalThemeManager.getDefaultTheme();
+
     private static final String LOG_TAG = "TerminalView";
 
     public TerminalView(Context context, AttributeSet attributes) { // NO_UCD (unused code)
         super(context, attributes);
+        float density = context.getResources().getDisplayMetrics().density;
+        mPadLeft = (int) (14 * density);
+        mPadRight = (int) (14 * density);
+        mPadTop = (int) (10 * density);
+        mPadBottom = (int) (10 * density);
+
         mGestureRecognizer = new GestureAndScaleRecognizer(context, new GestureAndScaleRecognizer.Listener() {
 
             boolean scrolledWithFinger;
@@ -237,6 +249,27 @@ public final class TerminalView extends View {
 
 
 
+    public void setTerminalPadding(int left, int top, int right, int bottom) {
+        mPadLeft = left;
+        mPadTop = top;
+        mPadRight = right;
+        mPadBottom = bottom;
+        updateSize();
+        invalidate();
+    }
+
+    public void setTheme(TerminalTheme theme) {
+        this.mTheme = theme;
+        if (mEmulator != null && theme != null) {
+            TerminalThemeManager.applyTheme(mEmulator, theme);
+        }
+        invalidate();
+    }
+
+    public TerminalTheme getTheme() {
+        return mTheme;
+    }
+
     /**
      * Attach a {@link SshTerminalSession} to this view.
      *
@@ -249,6 +282,10 @@ public final class TerminalView extends View {
         mTermSession = session;
         mEmulator = null;
         mCombiningAccent = 0;
+
+        if (session != null && session.getEmulator() != null && mTheme != null) {
+            TerminalThemeManager.applyTheme(session.getEmulator(), mTheme);
+        }
 
         updateSize();
 
@@ -481,8 +518,8 @@ public final class TerminalView extends View {
      * @return Array with the column and row.
      */
     public int[] getColumnAndRow(MotionEvent event, boolean relativeToScroll) {
-        int column = (int) (event.getX() / mRenderer.mFontWidth);
-        int row = (int) ((event.getY() - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
+        int column = (int) ((event.getX() - mPadLeft) / mRenderer.mFontWidth);
+        int row = (int) ((event.getY() - mPadTop - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
         if (relativeToScroll) {
             row += mTopRow;
         }
@@ -918,13 +955,18 @@ public final class TerminalView extends View {
         int viewHeight = getHeight();
         if (viewWidth == 0 || viewHeight == 0 || mTermSession == null) return;
 
-        // Set to 80 and 24 if you want to enable vttest.
-        int newColumns = Math.max(4, (int) (viewWidth / mRenderer.mFontWidth));
-        int newRows = Math.max(4, (viewHeight - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
+        int usableWidth = Math.max(0, viewWidth - mPadLeft - mPadRight);
+        int usableHeight = Math.max(0, viewHeight - mPadTop - mPadBottom);
+
+        int newColumns = Math.max(4, (int) (usableWidth / mRenderer.mFontWidth));
+        int newRows = Math.max(4, (usableHeight - mRenderer.mFontLineSpacingAndAscent) / mRenderer.mFontLineSpacing);
 
         if (mEmulator == null || (newColumns != mEmulator.mColumns || newRows != mEmulator.mRows)) {
             mTermSession.updateSize(newColumns, newRows);
             mEmulator = mTermSession.getEmulator();
+            if (mEmulator != null && mTheme != null) {
+                TerminalThemeManager.applyTheme(mEmulator, mTheme);
+            }
             mClient.onEmulatorSet();
 
             // Update mTerminalCursorBlinkerRunnable inner class mEmulator on session change
@@ -940,8 +982,15 @@ public final class TerminalView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         if (mEmulator == null) {
-            canvas.drawColor(0XFF000000);
+            int bgColor = mTheme != null ? mTheme.background : 0XFF1A1B26;
+            canvas.drawColor(bgColor);
         } else {
+            int bgColor = mEmulator.mColors.mCurrentColors[com.termux.terminal.TextStyle.COLOR_INDEX_BACKGROUND];
+            canvas.drawColor(bgColor);
+
+            canvas.save();
+            canvas.translate(mPadLeft, mPadTop);
+
             // render the terminal view and highlight any selected text
             int[] sel = mDefaultSelectors;
             if (mTextSelectionCursorController != null) {
@@ -952,6 +1001,8 @@ public final class TerminalView extends View {
 
             // render the text selection handles
             renderTextSelection();
+
+            canvas.restore();
         }
     }
 
@@ -964,22 +1015,22 @@ public final class TerminalView extends View {
     }
 
     public int getCursorX(float x) {
-        return (int) (x / mRenderer.mFontWidth);
+        return (int) ((x - mPadLeft) / mRenderer.mFontWidth);
     }
 
     public int getCursorY(float y) {
-        return (int) (((y - 40) / mRenderer.mFontLineSpacing) + mTopRow);
+        return (int) (((y - mPadTop) / mRenderer.mFontLineSpacing) + mTopRow);
     }
 
     public int getPointX(int cx) {
         if (cx > mEmulator.mColumns) {
             cx = mEmulator.mColumns;
         }
-        return Math.round(cx * mRenderer.mFontWidth);
+        return Math.round(mPadLeft + cx * mRenderer.mFontWidth);
     }
 
     public int getPointY(int cy) {
-        return Math.round((cy - mTopRow) * mRenderer.mFontLineSpacing);
+        return Math.round(mPadTop + (cy - mTopRow) * mRenderer.mFontLineSpacing);
     }
 
     public int getTopRow() {

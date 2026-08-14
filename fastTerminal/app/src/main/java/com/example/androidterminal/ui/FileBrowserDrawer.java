@@ -24,6 +24,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
+import androidx.core.widget.ImageViewCompat;
+import android.content.res.ColorStateList;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -61,8 +63,8 @@ public class FileBrowserDrawer {
     private final ProgressBar loadingView;
     private final ProgressBar progressView;
     private final EditText searchView;
-    private final ImageButton searchClearView;
-    private final ImageButton uploadButton;
+    private final View searchClearView;
+    private final View uploadButton;
     private final TextView bottomPathView;
     private final SftpManager sftpManager = new SftpManager();
 
@@ -83,12 +85,12 @@ public class FileBrowserDrawer {
         this.listView = panel.findViewById(R.id.file_browser_list);
         this.emptyView = panel.findViewById(R.id.file_browser_empty);
         this.emptyTextView = panel.findViewById(R.id.file_browser_empty_text);
-        this.loadingView = panel.findViewById(R.id.file_browser_loading);
+        this.loadingView = null;
         this.progressView = panel.findViewById(R.id.file_browser_progress);
         this.searchView = panel.findViewById(R.id.file_browser_search);
         this.searchClearView = panel.findViewById(R.id.file_browser_search_clear);
         this.uploadButton = panel.findViewById(R.id.file_browser_upload);
-        this.bottomPathView = panel.findViewById(R.id.file_browser_bottom_path);
+        this.bottomPathView = null;
 
         adapter = new FileListAdapter();
         listView.setLayoutManager(new LinearLayoutManager(activity));
@@ -97,40 +99,60 @@ public class FileBrowserDrawer {
 
         panel.findViewById(R.id.file_browser_home).setOnClickListener(v -> navigateTo("/"));
         panel.findViewById(R.id.file_browser_edit_path).setOnClickListener(v -> showPathDialog());
-        panel.findViewById(R.id.file_browser_refresh).setOnClickListener(v -> refresh());
-        panel.findViewById(R.id.file_browser_back).setOnClickListener(v -> goUp());
-        panel.findViewById(R.id.file_browser_sort).setOnClickListener(this::showSortMenu);
-        uploadButton.setOnClickListener(v -> {
-            if (session == null || !session.isConnected()) {
-                Toast.makeText(activity, activity.getString(R.string.error_connect_ssh_first), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            Snackbar.make(panel, activity.getString(R.string.upload_destination_format, currentPath), Snackbar.LENGTH_LONG).show();
-            if (uploadCallback != null) uploadCallback.onPickFile();
-        });
-        panel.findViewById(R.id.file_browser_new_folder).setOnClickListener(v -> showNewFolderDialog());
-        searchClearView.setOnClickListener(v -> searchView.setText(""));
+        View closeBtn = panel.findViewById(R.id.file_browser_close);
+        if (closeBtn != null) {
+            closeBtn.setOnClickListener(v -> close());
+        }
+        View sortBtn = panel.findViewById(R.id.file_browser_sort);
+        if (sortBtn != null) {
+            sortBtn.setOnClickListener(this::showSortMenu);
+        }
+        if (uploadButton != null) {
+            uploadButton.setOnClickListener(v -> {
+                if (session == null || !session.isConnected()) {
+                    Toast.makeText(activity, activity.getString(R.string.error_connect_ssh_first), Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                Snackbar.make(panel, activity.getString(R.string.upload_destination_format, currentPath), Snackbar.LENGTH_LONG).show();
+                if (uploadCallback != null) uploadCallback.onPickFile();
+            });
+        }
+        View newFolderBtn = panel.findViewById(R.id.file_browser_new_folder);
+        if (newFolderBtn != null) {
+            newFolderBtn.setOnClickListener(v -> showNewFolderDialog());
+        }
+        if (searchClearView != null) {
+            searchClearView.setOnClickListener(v -> searchView.setText(""));
+        }
 
-        searchView.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+        if (searchView != null) {
+            searchView.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
 
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
+                @Override
+                public void onTextChanged(CharSequence s, int start, int before, int count) {}
 
-            @Override
-            public void afterTextChanged(Editable s) {
-                searchClearView.setVisibility(TextUtils.isEmpty(s) ? View.GONE : View.VISIBLE);
-                applyFilterAndSort();
-            }
-        });
+                @Override
+                public void afterTextChanged(Editable s) {
+                    if (searchClearView != null) {
+                        searchClearView.setVisibility(TextUtils.isEmpty(s) ? View.GONE : View.VISIBLE);
+                    }
+                    applyFilterAndSort();
+                }
+            });
+        }
     }
 
     public void setSession(SshTerminalSession session) {
-        if (this.session != session) {
-            this.session = session;
+        boolean changed = (this.session != session);
+        this.session = session;
+        if (changed) {
             currentPath = "/";
-            searchView.setText("");
+            if (searchView != null) searchView.setText("");
+        }
+        if (isOpen() && session != null && session.isConnected()) {
+            navigateTo(currentPath);
         }
     }
 
@@ -151,6 +173,8 @@ public class FileBrowserDrawer {
         }
         if (session != null && session.isConnected()) {
             navigateTo(currentPath);
+        } else {
+            showEmpty("正在连接 SFTP...", false);
         }
     }
 
@@ -159,7 +183,6 @@ public class FileBrowserDrawer {
             drawerLayout.closeDrawer(panel);
         } else {
             panel.setVisibility(View.GONE);
-            panelShownAsChild = false;
         }
     }
 
@@ -167,7 +190,7 @@ public class FileBrowserDrawer {
         if (isHostedInDrawer()) {
             return drawerLayout.isDrawerOpen(panel);
         }
-        return panelShownAsChild;
+        return panel != null && panel.getVisibility() == View.VISIBLE;
     }
 
     public void toggle() {
@@ -185,7 +208,9 @@ public class FileBrowserDrawer {
     public void navigateTo(String path) {
         currentPath = path;
         renderBreadcrumbs(path);
-        bottomPathView.setText(path);
+        if (bottomPathView != null) {
+            bottomPathView.setText(path);
+        }
         showLoading(true);
 
         sftpManager.listFiles(session, path, (result, error) -> {
@@ -254,10 +279,18 @@ public class FileBrowserDrawer {
     private TextView createBreadcrumbSegment(String label, String path) {
         TextView tv = new TextView(activity);
         tv.setText(label);
-        tv.setTextSize(13f);
-        tv.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        tv.setTextColor(ContextCompat.getColor(activity, R.color.text_on_dark));
-        tv.setPadding(dp(6), 0, dp(6), 0);
+        tv.setTextSize(12f);
+        tv.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+        boolean isCurrent = currentPath.equals(path);
+        tv.setBackgroundResource(isCurrent ? R.drawable.bg_filter_pill_active : R.drawable.bg_filter_pill);
+        tv.setTextColor(ContextCompat.getColor(activity, isCurrent ? R.color.brand : R.color.brand_cyan));
+        tv.setPadding(dp(8), dp(3), dp(8), dp(3));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT
+        );
+        lp.setMargins(dp(2), 0, dp(2), 0);
+        tv.setLayoutParams(lp);
         tv.setOnClickListener(v -> navigateTo(path));
         return tv;
     }
@@ -313,9 +346,9 @@ public class FileBrowserDrawer {
     }
 
     private void showLoading(boolean show) {
-        loadingView.setVisibility(show ? View.VISIBLE : View.GONE);
-        listView.setVisibility(show ? View.GONE : View.VISIBLE);
-        emptyView.setVisibility(View.GONE);
+        if (progressView != null) {
+            progressView.setVisibility(show ? View.VISIBLE : View.GONE);
+        }
     }
 
     private void showEmpty(String message, boolean keepList) {
@@ -608,11 +641,25 @@ public class FileBrowserDrawer {
             holder.nameView.setText(entry.name);
             holder.sizeView.setText(entry.getDisplaySize());
             holder.dateView.setText(entry.getDisplayDate());
+
+            String lower = entry.name.toLowerCase();
             if (entry.isDirectory) {
                 holder.iconView.setImageResource(R.drawable.ic_folder);
+                ImageViewCompat.setImageTintList(holder.iconView, ColorStateList.valueOf(ContextCompat.getColor(activity, R.color.brand_cyan)));
+            } else if (lower.endsWith(".sh") || lower.endsWith(".bash") || lower.endsWith(".zsh") || lower.endsWith(".py")) {
+                holder.iconView.setImageResource(R.drawable.ic_terminal);
+                ImageViewCompat.setImageTintList(holder.iconView, ColorStateList.valueOf(ContextCompat.getColor(activity, R.color.brand_amber)));
+            } else if (lower.startsWith(".env") || lower.endsWith(".key") || lower.endsWith(".pem") || lower.endsWith(".pub") || lower.contains("rsa")) {
+                holder.iconView.setImageResource(R.drawable.ic_key);
+                ImageViewCompat.setImageTintList(holder.iconView, ColorStateList.valueOf(ContextCompat.getColor(activity, R.color.brand_rose)));
+            } else if (lower.endsWith(".json") || lower.endsWith(".yml") || lower.endsWith(".yaml") || lower.endsWith(".conf") || lower.endsWith(".toml") || lower.endsWith(".xml")) {
+                holder.iconView.setImageResource(R.drawable.ic_file);
+                ImageViewCompat.setImageTintList(holder.iconView, ColorStateList.valueOf(ContextCompat.getColor(activity, R.color.brand)));
             } else {
                 holder.iconView.setImageResource(R.drawable.ic_file);
+                ImageViewCompat.setImageTintList(holder.iconView, ColorStateList.valueOf(ContextCompat.getColor(activity, R.color.text_muted_on_dark)));
             }
+
             holder.itemView.setOnClickListener(v -> onItemClick(entry));
             holder.itemView.setOnLongClickListener(v -> {
                 onItemLongClick(entry);

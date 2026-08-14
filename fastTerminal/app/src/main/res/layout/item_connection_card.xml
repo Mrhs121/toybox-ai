@@ -4,130 +4,213 @@
     android:id="@+id/connection_card"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
+    android:layout_marginBottom="14dp"
     android:clickable="true"
     android:focusable="true"
     android:foreground="?attr/selectableItemBackground"
     app:cardBackgroundColor="@color/card_surface"
-    app:cardCornerRadius="12dp"
+    app:cardCornerRadius="20dp"
     app:cardElevation="0dp"
-    app:strokeColor="@color/drawer_field_stroke"
+    app:strokeColor="@color/card_stroke"
     app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="center_vertical"
-        android:orientation="horizontal"
-        android:paddingStart="16dp"
-        android:paddingTop="14dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="14dp">
+        android:orientation="vertical"
+        android:paddingStart="18dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="16dp">
 
-        <FrameLayout
-            android:id="@+id/connection_server_icon_container"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_server_icon_tile">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/connection_server_icon"
-                android:layout_width="22dp"
-                android:layout_height="22dp"
-                android:layout_gravity="center"
-                android:contentDescription="@string/server_icon_description"
-                android:src="@drawable/ic_server"
-                android:tint="@color/terminal_background" />
-        </FrameLayout>
-
+        <!-- Top Header: Icon + Titles + Star/Overflow -->
         <LinearLayout
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
-            android:layout_weight="1"
-            android:orientation="vertical">
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/connection_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/brand"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:textAllCaps="true"
-                android:visibility="gone" />
+            <FrameLayout
+                android:id="@+id/connection_server_icon_container"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_server_icon_tile">
 
-            <TextView
-                android:id="@+id/connection_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="1dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/text_on_dark"
-                android:textSize="16sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/connection_details"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="3dp"
-                android:ellipsize="end"
-                android:maxLines="1"
-                android:textColor="@color/text_muted_on_dark"
-                android:textSize="12sp" />
+                <androidx.appcompat.widget.AppCompatImageView
+                    android:id="@+id/connection_server_icon"
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@string/server_icon_description"
+                    android:src="@drawable/ic_server"
+                    android:tint="@color/brand" />
+            </FrameLayout>
 
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <View
-                    android:id="@+id/connection_status_dot"
-                    android:layout_width="12dp"
-                    android:layout_height="12dp"
-                    android:background="@color/status_unknown" />
-
-                <TextView
-                    android:id="@+id/connection_status_text"
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="7dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/connection_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:textColor="@color/text_on_dark"
+                        android:textSize="15.5sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/connection_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:background="@drawable/bg_filter_pill_active"
+                        android:paddingStart="7dp"
+                        android:paddingTop="2dp"
+                        android:paddingEnd="7dp"
+                        android:paddingBottom="2dp"
+                        android:text="SSH"
+                        android:textColor="@color/brand"
+                        android:textSize="10sp"
+                        android:textStyle="bold"
+                        android:visibility="gone" />
+                </LinearLayout>
+
+                <!-- Monospace host info -->
+                <TextView
+                    android:id="@+id/connection_details"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:ellipsize="end"
+                    android:fontFamily="monospace"
+                    android:maxLines="1"
                     android:textColor="@color/text_muted_on_dark"
                     android:textSize="12sp" />
-
-                <TextView
-                    android:id="@+id/connection_last_connected"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:visibility="gone" />
             </LinearLayout>
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/connection_favorite"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/favorite_description"
+                android:padding="7dp"
+                android:src="@drawable/ic_star_border"
+                android:tint="@color/text_muted_on_dark" />
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/connection_overflow"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/connection_overflow_description"
+                android:padding="6dp"
+                android:src="@drawable/ic_more_vert"
+                android:tint="@color/text_muted_on_dark" />
         </LinearLayout>
 
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/connection_favorite"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/favorite_description"
-            android:padding="8dp"
-            android:src="@drawable/ic_star_border"
-            android:tint="@color/text_muted_on_dark" />
+        <!-- Status & Meta Row -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/bg_card_meta_row"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="12dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp">
 
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/connection_overflow"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="@string/connection_overflow_description"
-            android:padding="7dp"
-            android:src="@drawable/ic_more_vert"
-            android:tint="@color/text_muted_on_dark" />
+            <View
+                android:id="@+id/connection_status_dot"
+                android:layout_width="9dp"
+                android:layout_height="9dp"
+                android:background="@drawable/bg_status_dot_glow" />
+
+            <TextView
+                android:id="@+id/connection_status_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_secondary"
+                android:textSize="11.5sp" />
+
+            <TextView
+                android:id="@+id/connection_last_connected"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="monospace"
+                android:textColor="@color/text_muted_on_dark"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Quick Action Buttons -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/connection_quick_terminal_button"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_quick_btn_primary"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="@string/nav_terminal"
+                android:textAllCaps="false"
+                android:textColor="@color/brand"
+                android:textSize="12.5sp"
+                android:textStyle="bold"
+                app:backgroundTint="@null"
+                app:icon="@drawable/ic_terminal"
+                app:iconGravity="textStart"
+                app:iconPadding="6dp"
+                app:iconSize="15dp"
+                app:iconTint="@color/brand" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/connection_quick_sftp_button"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_marginStart="10dp"
+                android:layout_weight="1"
+                android:background="@drawable/bg_card_quick_btn"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="SFTP"
+                android:textAllCaps="false"
+                android:textColor="@color/text_secondary"
+                android:textSize="12.5sp"
+                android:textStyle="bold"
+                app:backgroundTint="@null"
+                app:icon="@drawable/ic_folder"
+                app:iconGravity="textStart"
+                app:iconPadding="6dp"
+                app:iconSize="15dp"
+                app:iconTint="@color/text_secondary" />
+        </LinearLayout>
+
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

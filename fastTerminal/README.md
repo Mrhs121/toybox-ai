@@ -1,38 +1,36 @@
 # FastTerminal
 
-FastTerminal is an Android SSH terminal focused on external keyboard and mouse use.
+FastTerminal 是一款专为 Android 横屏平板、外接键盘与鼠标打造的现代化桌面级 SSH 终端与 SFTP 客户端。
 
-Current highlights:
+## 🌟 核心特性
 
-- Bottom navigation with Home, Terminal, Settings, Keys, About panels.
-- Home panel shows recent and saved connections as compact chips — tap to connect.
-- Multi-tab terminal with `Ctrl+T/W/Left/Right` shortcuts.
-- Physical `Esc` is always sent to the terminal and will not trigger Android back/exit.
-- Mouse left drag selects terminal text; right click shows paste near the pointer.
-- Multiple SSH connections can be saved locally, edited, deleted, and connected.
-- SFTP file browser with upload, download, and folder management.
-- Nerd Font (JetBrainsMono) bundled for icon rendering.
-- SSH sessions stay alive when the app goes to the background through a foreground service.
-- The terminal UI is optimized for tablet / desktop-style Android use.
+- **现代深邃视觉体系** — 采用深邃夜空黑 `#06080F` 底色与柔和边框，卡片超椭圆圆角（20dp）与状态栏（10dp）视觉矩阵。
+- **平板级侧边栏导航** — 整合「服务器列表」、「终端会话」、「SFTP 文件传输」、「偏好与设置」四大面板，横屏下操作畅快。
+- **现代化服务器列表与单行过滤** — 搜索栏与 `[全部]` `[⭐ 常用]` `[🏠 局域网]` `[🚀 云端]` 胶囊按钮单行融合，清晰展示主机、在线状态、延迟与最近连接。
+- **终端多主题实时切换** — 内置 One Dark、Tokyo Night、Catppuccin Mocha、Dracula、Solarized Dark、Nord、Monokai 7 款经典终端配色，支持会话头部实时切换。
+- **多 Tab 会话与类 iTerm 快捷键** — 支持多 Tab 会话管理，`Ctrl+T` 新建、`Ctrl+W` 关闭、`Ctrl+←/→` 左右切换 Tab。
+- **PC 级键鼠交互** — 物理 `Esc` 专供终端拦截，鼠标左键拖拽选中文本，右键菜单快速粘贴，支持标准 `Ctrl+C/V`。
+- **机械按键质感快捷栏** — 底部双行快捷键（特殊字符、修饰键、方向键、组合键、htop/docker/git 常用宏），软键盘输入极度便捷。
+- **伴随式 SFTP 文件浏览器** — 横屏下右侧伴随式分屏文件浏览器，支持远程目录树、面包屑跳转、文件上传、新建文件夹、重命名与删除。
+- **Nerd Font 字体支持** — 内置 JetBrainsMono Nerd Font，Powerline、Starship 提示符与开发文件图标精准渲染。
+- **后台保活服务** — 前台服务保障 SSH 与长任务在后台平稳运行不掉线。
 
-Build requirements:
+---
 
+## 🛠️ 构建与安装
+
+### 构建依赖
 - JDK 17
-- Android SDK with `platforms;android-35` and `build-tools;35.0.0`
-- A `local.properties` file with `sdk.dir=/path/to/your/android/sdk`
+- Android SDK (`platforms;android-35`, `build-tools;35.0.0`)
+- `local.properties` (配置 `sdk.dir=/path/to/android-sdk`)
 
-Build debug APK:
-
+### 编译 Debug APK
 ```bash
-JAVA_HOME=$(/usr/libexec/java_home -v 17) GRADLE_USER_HOME=$PWD/.gradle-home ./gradlew :app:assembleDebug
+./gradlew :app:assembleDebug
 ```
 
-Install to device:
-
+### 安装到设备
 ```bash
-./android-sdk/platform-tools/adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Debug APK output:
-
-- `app/build/outputs/apk/debug/app-debug.apk`

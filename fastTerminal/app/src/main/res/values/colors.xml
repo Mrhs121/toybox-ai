@@ -1,50 +1,57 @@
 <resources>
-    <!-- Light (day) palette -->
-    <color name="surface_background">#F4F7FA</color>
-    <color name="terminal_background">#F4F7FA</color>
+    <!-- Light (Day) Design Tokens -->
+    <color name="surface_background">#F8FAFC</color>
+    <color name="terminal_background">#F8FAFC</color>
     <color name="drawer_surface">#FFFFFF</color>
     <color name="dialog_surface">#FFFFFF</color>
-    <color name="dialog_stroke">#D8E0E8</color>
-    <color name="card_stroke">#D8E0E8</color>
+    <color name="dialog_stroke">#E2E8F0</color>
+    <color name="card_stroke">#E2E8F0</color>
     <color name="top_bar_surface">#FFFFFF</color>
-    <color name="top_bar_stroke">#E2E8EE</color>
-    <color name="drawer_field_surface">#F2F5F8</color>
-    <color name="drawer_field_stroke">#D8E0E8</color>
-    <color name="text_primary">#17212B</color>
-    <color name="text_secondary">#5B6B7A</color>
-    <color name="text_on_dark">#17212B</color>
-    <color name="text_muted_on_dark">#5B6B7A</color>
-    <color name="subtle_divider">#E2E8EE</color>
-    <color name="sidebar_surface">#F8FAFC</color>
-    <color name="sidebar_item_active">#E1F3EF</color>
+    <color name="top_bar_stroke">#E2E8F0</color>
+    <color name="drawer_field_surface">#F1F5F9</color>
+    <color name="drawer_field_stroke">#CBD5E1</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#475569</color>
+    <color name="text_on_dark">#0F172A</color>
+    <color name="text_muted_on_dark">#64748B</color>
+    <color name="subtle_divider">#E2E8F0</color>
+    <color name="sidebar_surface">#F1F5F9</color>
+    <color name="sidebar_item_active">#DCFCE7</color>
     <color name="card_surface">#FFFFFF</color>
-    <color name="card_surface_hover">#E9EEF3</color>
-    <color name="saved_connection_selected_surface">#E1F3EF</color>
-    <color name="saved_connection_selected_stroke">#23B7A4</color>
-    <color name="brand">#0E9E8F</color>
-    <color name="brand_hover">#23B7A4</color>
+    <color name="card_surface_hover">#F8FAFC</color>
+    <color name="saved_connection_selected_surface">#DCFCE7</color>
+    <color name="saved_connection_selected_stroke">#10B981</color>
+    
+    <!-- Brand & Accent Palette -->
+    <color name="brand">#059669</color>
+    <color name="brand_hover">#10B981</color>
+    <color name="brand_cyan">#0891B2</color>
+    <color name="brand_purple">#9333EA</color>
+    <color name="brand_amber">#D97706</color>
+    <color name="brand_rose">#E11D48</color>
+    
     <color name="dock_surface">#FFFFFF</color>
-    <color name="dock_item_active">#D6F0EB</color>
-    <color name="brand_surface">#DDF2EE</color>
-    <color name="brand_gradient_start">#2AB7A8</color>
-    <color name="brand_gradient_end">#0E766E</color>
-    <color name="brand_glow">#332BC67D</color>
-    <color name="status_connected">#18A05B</color>
-    <color name="status_unknown">#8A97A3</color>
-    <color name="status_warning">#C9972E</color>
-    <color name="status_error">#D9534F</color>
+    <color name="dock_item_active">#DCFCE7</color>
+    <color name="brand_surface">#ECFDF5</color>
+    <color name="brand_gradient_start">#10B981</color>
+    <color name="brand_gradient_end">#047857</color>
+    <color name="brand_glow">#3310B981</color>
+    <color name="status_connected">#10B981</color>
+    <color name="status_unknown">#94A3B8</color>
+    <color name="status_warning">#F59E0B</color>
+    <color name="status_error">#EF4444</color>
 
-    <!-- Terminal panel: constant (always dark) in both modes -->
-    <color name="terminal_surface">#0A0F16</color>
-    <color name="terminal_text">#F3F7FB</color>
-    <color name="terminal_text_muted">#91A0AD</color>
-    <color name="tab_bar_surface">#0F1720</color>
-    <color name="tab_surface">#141D29</color>
-    <color name="tab_surface_active">#1B2A33</color>
-    <color name="tab_text_active">#F3F7FB</color>
-    <color name="shortcut_key_surface">#22303F</color>
-    <color name="shortcut_key_surface_pressed">#2C3C4E</color>
-    <color name="shortcut_key_stroke">#2E3D4C</color>
-    <color name="shortcut_key_active">#0E766E</color>
-    <color name="shortcut_key_active_pressed">#0F8A80</color>
+    <!-- Terminal Panel: Always Dark for authentic terminal experience -->
+    <color name="terminal_surface">#0B0F17</color>
+    <color name="terminal_text">#F8FAFC</color>
+    <color name="terminal_text_muted">#64748B</color>
+    <color name="tab_bar_surface">#090D14</color>
+    <color name="tab_surface">#131B2A</color>
+    <color name="tab_surface_active">#1E293B</color>
+    <color name="tab_text_active">#F8FAFC</color>
+    <color name="shortcut_key_surface">#162030</color>
+    <color name="shortcut_key_surface_pressed">#0F172A</color>
+    <color name="shortcut_key_stroke">#223046</color>
+    <color name="shortcut_key_active">#059669</color>
+    <color name="shortcut_key_active_pressed">#047857</color>
 </resources>

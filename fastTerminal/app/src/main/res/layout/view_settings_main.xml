@@ -10,42 +10,43 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingStart="16dp"
-        android:paddingTop="12dp"
-        android:paddingEnd="16dp"
-        android:paddingBottom="24dp">
+        android:paddingStart="20dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="32dp">
 
-        <!-- Section header: Terminal -->
+        <!-- Section: Appearance & Terminal Themes -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="4dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/settings_terminal_section"
+            android:layout_marginBottom="10dp"
             android:letterSpacing="0.06"
+            android:text="🎨 终端视觉与主题"
+            android:textAllCaps="true"
             android:textColor="@color/text_muted_on_dark"
             android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAllCaps="true" />
+            android:textStyle="bold" />
 
         <com.google.android.material.card.MaterialCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             app:cardBackgroundColor="@color/card_surface"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="16dp"
             app:cardElevation="0dp"
-            app:strokeColor="@color/drawer_field_stroke"
+            app:strokeColor="@color/card_stroke"
             app:strokeWidth="1dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="12dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="12dp">
+                android:paddingStart="18dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="16dp">
 
+                <!-- Font Size Slider -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -58,22 +59,297 @@
                         android:layout_weight="1"
                         android:text="@string/default_font_size_label"
                         android:textColor="@color/text_on_dark"
-                        android:textSize="14sp" />
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
 
                     <TextView
                         android:id="@+id/settings_font_size_value"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textColor="@color/text_muted_on_dark"
-                        android:textSize="13sp" />
+                        android:fontFamily="monospace"
+                        android:textColor="@color/brand"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <SeekBar
                     android:id="@+id/settings_font_size_seek"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:max="48" />
+                    android:layout_marginTop="8dp"
+                    android:max="48"
+                    android:progressTint="@color/brand"
+                    android:thumbTint="@color/brand" />
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:layout_marginTop="16dp"
+                    android:layout_marginBottom="16dp"
+                    android:background="@color/subtle_divider" />
+
+                <!-- Cursor Style -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/cursor_style_label"
+                    android:textColor="@color/text_on_dark"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <RadioGroup
+                    android:id="@+id/settings_cursor_style_group"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/settings_cursor_block"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:buttonTint="@color/brand"
+                        android:text="▋ 方块"
+                        android:textColor="@color/text_on_dark"
+                        android:textSize="13sp" />
+
+                    <RadioButton
+                        android:id="@+id/settings_cursor_underline"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:buttonTint="@color/brand"
+                        android:text="_ 下划线"
+                        android:textColor="@color/text_on_dark"
+                        android:textSize="13sp" />
+
+                    <RadioButton
+                        android:id="@+id/settings_cursor_bar"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:buttonTint="@color/brand"
+                        android:text="| 竖线"
+                        android:textColor="@color/text_on_dark"
+                        android:textSize="13sp" />
+                </RadioGroup>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Section: Behavior -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="10dp"
+            android:letterSpacing="0.06"
+            android:text="⚙️ 行为与屏幕"
+            android:textAllCaps="true"
+            android:textColor="@color/text_muted_on_dark"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/card_surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="18dp"
+                android:paddingTop="12dp"
+                android:paddingEnd="18dp"
+                android:paddingBottom="12dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/keep_screen_on_label"
+                    android:textColor="@color/text_on_dark"
+                    android:textSize="14sp"
+                    android:textStyle="bold" />
+
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/settings_keep_screen_on"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:thumbTint="@color/brand"
+                    app:trackTint="@color/brand_surface" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Section: SSH Keys & Security -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="10dp"
+            android:letterSpacing="0.06"
+            android:text="🔑 SSH 密钥与安全性"
+            android:textAllCaps="true"
+            android:textColor="@color/text_muted_on_dark"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/settings_keys_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?attr/selectableItemBackground"
+            app:cardBackgroundColor="@color/card_surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <FrameLayout
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="@drawable/bg_server_icon_tile">
+
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:layout_gravity="center"
+                            android:src="@drawable/ic_key"
+                            android:tint="@color/brand" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/settings_keys_section"
+                            android:textColor="@color/text_on_dark"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:text="管理 Ed25519 / RSA 密钥对"
+                            android:textColor="@color/text_muted_on_dark"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <androidx.appcompat.widget.AppCompatImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_chevron_right"
+                        android:tint="@color/text_muted_on_dark" />
+                </LinearLayout>
+
+                <!-- Quick Action Buttons -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/settings_gen_key_btn"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_card_quick_btn_primary"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="+ 生成 Ed25519"
+                        android:textAllCaps="false"
+                        android:textColor="@color/brand"
+                        android:textSize="12sp"
+                        app:backgroundTint="@null" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/settings_import_key_btn"
+                        style="@style/Widget.Material3.Button.TonalButton"
+                        android:layout_width="0dp"
+                        android:layout_height="38dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:background="@drawable/bg_card_quick_btn"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:text="导入私钥 (.pem)"
+                        android:textAllCaps="false"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        app:backgroundTint="@null" />
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Section: About -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="10dp"
+            android:letterSpacing="0.06"
+            android:text="ℹ️ 关于 FastTerminal"
+            android:textAllCaps="true"
+            android:textColor="@color/text_muted_on_dark"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardBackgroundColor="@color/card_surface"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/card_stroke"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="18dp">
+
+                <TextView
+                    android:id="@+id/settings_about_version"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="monospace"
+                    android:text="FastTerminal v2.0 高性能 SSH &amp; SFTP 终端客户端"
+                    android:textColor="@color/text_on_dark"
+                    android:textSize="13sp"
+                    android:textStyle="bold" />
 
                 <View
                     android:layout_width="match_parent"
@@ -85,281 +361,22 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@string/cursor_style_label"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="14sp" />
-
-                <RadioGroup
-                    android:id="@+id/settings_cursor_style_group"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:orientation="vertical">
-
-                    <RadioButton
-                        android:id="@+id/settings_cursor_block"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:buttonTint="@color/text_on_dark"
-                        android:text="@string/cursor_style_block"
-                        android:textColor="@color/text_on_dark"
-                        android:textSize="14sp" />
-
-                    <RadioButton
-                        android:id="@+id/settings_cursor_underline"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:buttonTint="@color/text_on_dark"
-                        android:text="@string/cursor_style_underline"
-                        android:textColor="@color/text_on_dark"
-                        android:textSize="14sp" />
-
-                    <RadioButton
-                        android:id="@+id/settings_cursor_bar"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:buttonTint="@color/text_on_dark"
-                        android:text="@string/cursor_style_bar"
-                        android:textColor="@color/text_on_dark"
-                        android:textSize="14sp" />
-                </RadioGroup>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Section header: Behavior -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/settings_behavior_section"
-            android:letterSpacing="0.06"
-            android:textColor="@color/text_muted_on_dark"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAllCaps="true" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/card_surface"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/drawer_field_stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="6dp"
-                android:paddingBottom="6dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="@string/keep_screen_on_label"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="14sp" />
-
-                <com.google.android.material.materialswitch.MaterialSwitch
-                    android:id="@+id/settings_keep_screen_on"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Section header: Appearance -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/settings_appearance_section"
-            android:letterSpacing="0.06"
-            android:textColor="@color/text_muted_on_dark"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAllCaps="true" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/card_surface"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/drawer_field_stroke"
-            app:strokeWidth="1dp">
-
-            <RadioGroup
-                android:id="@+id/settings_theme_group"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="6dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="6dp">
-
-                <RadioButton
-                    android:id="@+id/settings_theme_dark"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:buttonTint="@color/text_on_dark"
-                    android:text="@string/theme_dark"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="14sp" />
-
-                <RadioButton
-                    android:id="@+id/settings_theme_light"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:buttonTint="@color/text_on_dark"
-                    android:text="@string/theme_light"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="14sp" />
-            </RadioGroup>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Section header: SSH Keys -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/settings_keys_section"
-            android:letterSpacing="0.06"
-            android:textColor="@color/text_muted_on_dark"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAllCaps="true" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/settings_keys_card"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:clickable="true"
-            android:focusable="true"
-            android:foreground="?attr/selectableItemBackground"
-            app:cardBackgroundColor="@color/card_surface"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/drawer_field_stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="16dp">
-
-                <androidx.appcompat.widget.AppCompatImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_key"
-                    android:tint="@color/text_muted_on_dark" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/settings_keys_section"
-                        android:textColor="@color/text_on_dark"
-                        android:textSize="14sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="2dp"
-                        android:text="@string/settings_keys_subtitle"
-                        android:textColor="@color/text_muted_on_dark"
-                        android:textSize="12sp" />
-                </LinearLayout>
-
-                <androidx.appcompat.widget.AppCompatImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_chevron_right"
-                    android:tint="@color/text_muted_on_dark" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Section header: About -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="4dp"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="8dp"
-            android:text="@string/settings_about_section"
-            android:letterSpacing="0.06"
-            android:textColor="@color/text_muted_on_dark"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:textAllCaps="true" />
-
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            app:cardBackgroundColor="@color/card_surface"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/drawer_field_stroke"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:paddingStart="16dp"
-                android:paddingTop="12dp"
-                android:paddingEnd="16dp"
-                android:paddingBottom="12dp">
-
-                <TextView
-                    android:id="@+id/settings_about_version"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="13sp" />
-
-                <View
-                    android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:layout_marginTop="10dp"
-                    android:layout_marginBottom="10dp"
-                    android:background="@color/subtle_divider" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
                     android:text="@string/about_dependencies"
                     android:textColor="@color/text_muted_on_dark"
                     android:textSize="11sp"
-                    android:textAllCaps="true" />
+                    android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/settings_about_dependencies"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
-                    android:textColor="@color/text_on_dark"
+                    android:fontFamily="monospace"
+                    android:text="JSch 0.2.16 • Termux Terminal Emulator"
+                    android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
     </LinearLayout>
 </ScrollView>

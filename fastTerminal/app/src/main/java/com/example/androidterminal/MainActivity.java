@@ -103,6 +103,8 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private static final int MENU_DUPLICATE = 3;
     private static final int MENU_DELETE = 4;
     private static final long RECENT_CONNECTION_MS = 7L * 24L * 60L * 60L * 1000L;
+    private static final String KEY_TERMINAL_THEME = "key_terminal_theme";
+    private static final String DEFAULT_TERMINAL_THEME = "Tokyo Night";
 
     private ActivityMainBinding binding;
     private SharedPreferences preferences;
@@ -126,6 +128,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private boolean settingsShowingSubpage = false;
     private EditText connectionsSearch;
     private String connectionSearchQuery = "";
+    private static final int FILTER_ALL = 0;
+    private static final int FILTER_FAV = 1;
+    private static final int FILTER_HOMELAB = 2;
+    private static final int FILTER_CLOUD = 3;
+    private int currentFilterCategory = FILTER_ALL;
 
     private final ActivityResultLauncher<String> filePickerLauncher =
         registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -293,6 +300,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         terminalView.setTypeface(nerdFont);
         applyCompactPointerIcon();
 
+        String savedTheme = preferences.getString(KEY_TERMINAL_THEME, DEFAULT_TERMINAL_THEME);
+        com.example.androidterminal.terminalview.TerminalTheme currentTheme = com.example.androidterminal.terminalview.TerminalThemeManager.getTheme(savedTheme);
+        terminalView.setTheme(currentTheme);
+        binding.panelTerminal.terminalContainer.setBackgroundColor(currentTheme.background);
+
         FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.MATCH_PARENT,
             FrameLayout.LayoutParams.MATCH_PARENT
@@ -304,6 +316,65 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void bindActions() {
         binding.panelTerminal.newTabButton.setOnClickListener(v -> showConnectionPickerDialog());
         binding.panelTerminal.terminalEmptyGoConnections.setOnClickListener(v -> switchToPanel(R.id.nav_connections));
+        binding.panelTerminal.termOpenSftpButton.setOnClickListener(v -> toggleSftpDrawer());
+
+        List<String> themeList = com.example.androidterminal.terminalview.TerminalThemeManager.getThemeNames();
+        android.widget.ArrayAdapter<String> themeAdapter = new android.widget.ArrayAdapter<>(this, R.layout.item_theme_spinner_selected, themeList);
+        themeAdapter.setDropDownViewResource(R.layout.item_theme_spinner_dropdown);
+        binding.panelTerminal.termThemeSpinner.setAdapter(themeAdapter);
+        String savedThemeName = preferences.getString(KEY_TERMINAL_THEME, DEFAULT_TERMINAL_THEME);
+        int themeIndex = themeList.indexOf(savedThemeName);
+        if (themeIndex >= 0) {
+            binding.panelTerminal.termThemeSpinner.setSelection(themeIndex, false);
+        }
+        binding.panelTerminal.termThemeSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                String themeName = themeList.get(position);
+                preferences.edit().putString(KEY_TERMINAL_THEME, themeName).apply();
+                com.example.androidterminal.terminalview.TerminalTheme theme = com.example.androidterminal.terminalview.TerminalThemeManager.getTheme(themeName);
+                if (terminalView != null) {
+                    terminalView.setTheme(theme);
+                }
+                binding.panelTerminal.terminalContainer.setBackgroundColor(theme.background);
+                for (SshTerminalSession s : SshSessionRepository.listSessions()) {
+                    if (s.getEmulator() != null) {
+                        com.example.androidterminal.terminalview.TerminalThemeManager.applyTheme(s.getEmulator(), theme);
+                    }
+                }
+                if (terminalView != null) {
+                    terminalView.invalidate();
+                }
+            }
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+    }
+
+    private SavedConnection getFavoriteOrFirstConnection() {
+        if (savedConnections == null || savedConnections.isEmpty()) return null;
+        for (SavedConnection sc : savedConnections) {
+            if (sc.favorite) return sc;
+        }
+        return savedConnections.get(0);
+    }
+
+    private void toggleSftpDrawer() {
+        SshTerminalSession session = getActiveSession();
+        if (session == null || !session.isConnected()) {
+            SavedConnection fav = getFavoriteOrFirstConnection();
+            if (fav != null) {
+                openSftpForConnection(fav);
+                return;
+            }
+            toast(getString(R.string.error_connect_ssh_first));
+            return;
+        }
+        switchToPanel(R.id.nav_terminal);
+        if (fileBrowserDrawer != null) {
+            fileBrowserDrawer.setSession(session);
+            fileBrowserDrawer.toggle();
+        }
     }
 
     private void setupShortcutBar() {
@@ -313,7 +384,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             binding.panelTerminal.shortcutRow1.addView(createShortcutKeyButton(key, false));
         }
 
-        // Row 2: modifier keys and Ctrl combos
+        // Row 2: modifier keys, arrows, combos & macro keys
         ctrlButton = createShortcutKeyButton("Ctrl", true);
         altButton = createShortcutKeyButton("Alt", true);
         binding.panelTerminal.shortcutRow2.addView(ctrlButton);
@@ -331,6 +402,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
         String[] ctrlCombos = {"Ctrl+C", "Ctrl+D", "Ctrl+Z", "Ctrl+L", "Ctrl+R", "Ctrl+A", "Ctrl+E"};
         for (String key : ctrlCombos) {
+            binding.panelTerminal.shortcutRow2.addView(createShortcutKeyButton(key, false));
+        }
+
+        String[] macroKeys = {"⚡ htop", "🐳 docker", "🌿 git", "🧹 clear"};
+        for (String key : macroKeys) {
             binding.panelTerminal.shortcutRow2.addView(createShortcutKeyButton(key, false));
         }
     }
@@ -397,13 +473,12 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private void setupSidebarNavigationIfPresent() {
         View connections = binding.getRoot().findViewById(R.id.sidebar_nav_connections);
         View terminal = binding.getRoot().findViewById(R.id.sidebar_nav_terminal);
+        View sftp = binding.getRoot().findViewById(R.id.sidebar_nav_sftp);
         View settings = binding.getRoot().findViewById(R.id.sidebar_nav_settings);
-        if (connections == null || terminal == null || settings == null) {
-            return;
-        }
-        connections.setOnClickListener(v -> switchToPanel(R.id.nav_connections));
-        terminal.setOnClickListener(v -> switchToPanel(R.id.nav_terminal));
-        settings.setOnClickListener(v -> switchToPanel(R.id.nav_settings));
+        if (connections != null) connections.setOnClickListener(v -> switchToPanel(R.id.nav_connections));
+        if (terminal != null) terminal.setOnClickListener(v -> switchToPanel(R.id.nav_terminal));
+        if (sftp != null) sftp.setOnClickListener(v -> toggleSftpDrawer());
+        if (settings != null) settings.setOnClickListener(v -> switchToPanel(R.id.nav_settings));
     }
 
     private void switchToPanel(int panelId) {
@@ -411,6 +486,13 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         activePanelId = panelId;
         updateNavigationSelection(panelId);
         switchingPanel = false;
+
+        // Ensure file browser drawer does not squeeze non-terminal panels (Connections / Settings)
+        if (panelId != R.id.nav_terminal) {
+            if (fileBrowserDrawer != null && fileBrowserDrawer.isOpen()) {
+                fileBrowserDrawer.close();
+            }
+        }
 
         // Cross-fade panels (alpha only — TerminalView is a custom canvas renderer,
         // translate/slide can leave black gaps on return).
@@ -529,7 +611,46 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 renderConnectionsPanel();
             }
         });
+
+        View pillAll = panelConnections.findViewById(R.id.filter_pill_all);
+        View pillFav = panelConnections.findViewById(R.id.filter_pill_fav);
+        View pillHome = panelConnections.findViewById(R.id.filter_pill_homelab);
+        View pillCloud = panelConnections.findViewById(R.id.filter_pill_cloud);
+
+        if (pillAll != null) {
+            pillAll.setOnClickListener(v -> setFilterCategory(FILTER_ALL));
+            pillFav.setOnClickListener(v -> setFilterCategory(FILTER_FAV));
+            pillHome.setOnClickListener(v -> setFilterCategory(FILTER_HOMELAB));
+            pillCloud.setOnClickListener(v -> setFilterCategory(FILTER_CLOUD));
+        }
+
         renderConnectionsPanel();
+    }
+
+    private void setFilterCategory(int category) {
+        currentFilterCategory = category;
+        updateFilterPillsUi();
+        renderConnectionsPanel();
+    }
+
+    private void updateFilterPillsUi() {
+        TextView pillAll = panelConnections.findViewById(R.id.filter_pill_all);
+        TextView pillFav = panelConnections.findViewById(R.id.filter_pill_fav);
+        TextView pillHome = panelConnections.findViewById(R.id.filter_pill_homelab);
+        TextView pillCloud = panelConnections.findViewById(R.id.filter_pill_cloud);
+        if (pillAll == null) return;
+
+        pillAll.setBackgroundResource(currentFilterCategory == FILTER_ALL ? R.drawable.bg_filter_pill_active : R.drawable.bg_filter_pill);
+        pillAll.setTextColor(ContextCompat.getColor(this, currentFilterCategory == FILTER_ALL ? R.color.brand : R.color.text_secondary));
+
+        pillFav.setBackgroundResource(currentFilterCategory == FILTER_FAV ? R.drawable.bg_filter_pill_active : R.drawable.bg_filter_pill);
+        pillFav.setTextColor(ContextCompat.getColor(this, currentFilterCategory == FILTER_FAV ? R.color.brand : R.color.text_secondary));
+
+        pillHome.setBackgroundResource(currentFilterCategory == FILTER_HOMELAB ? R.drawable.bg_filter_pill_active : R.drawable.bg_filter_pill);
+        pillHome.setTextColor(ContextCompat.getColor(this, currentFilterCategory == FILTER_HOMELAB ? R.color.brand : R.color.text_secondary));
+
+        pillCloud.setBackgroundResource(currentFilterCategory == FILTER_CLOUD ? R.drawable.bg_filter_pill_active : R.drawable.bg_filter_pill);
+        pillCloud.setTextColor(ContextCompat.getColor(this, currentFilterCategory == FILTER_CLOUD ? R.color.brand : R.color.text_secondary));
     }
 
     private void renderConnectionsPanel() {
@@ -564,26 +685,29 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             return;
         }
 
-        List<SavedConnection> favorites = new ArrayList<>();
-        List<SavedConnection> all = new ArrayList<>();
-        for (SavedConnection sc : filtered) {
-            if (sc.favorite) {
-                favorites.add(sc);
-            } else {
-                all.add(sc);
-            }
-        }
+        renderConnectionList(listContainer, filtered);
+    }
 
-        if (!favorites.isEmpty()) {
-            renderConnectionSection(listContainer, getString(R.string.favorites_section), favorites);
-        }
-        renderConnectionSection(listContainer, getString(R.string.all_connections_section), all);
+    private boolean isTabletOrLandscape() {
+        return getResources().getConfiguration().screenWidthDp >= 600;
     }
 
     private List<SavedConnection> filterConnections() {
         String query = connectionSearchQuery.toLowerCase();
         List<SavedConnection> filtered = new ArrayList<>();
         for (SavedConnection sc : savedConnections) {
+            if (currentFilterCategory == FILTER_FAV && !sc.favorite) {
+                continue;
+            }
+            if (currentFilterCategory == FILTER_HOMELAB) {
+                boolean isLocal = sc.host.startsWith("192.168.") || sc.host.startsWith("10.") || sc.host.startsWith("172.16.") || sc.host.startsWith("127.") || sc.host.contains(".local") || (!TextUtils.isEmpty(sc.label) && sc.label.toLowerCase().contains("home"));
+                if (!isLocal) continue;
+            }
+            if (currentFilterCategory == FILTER_CLOUD) {
+                boolean isLocal = sc.host.startsWith("192.168.") || sc.host.startsWith("10.") || sc.host.startsWith("172.16.") || sc.host.startsWith("127.") || sc.host.contains(".local");
+                if (isLocal) continue;
+            }
+
             if (query.isEmpty()) {
                 filtered.add(sc);
                 continue;
@@ -602,32 +726,53 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         if (aActive != bActive) {
             return aActive ? -1 : 1;
         }
+        if (a.favorite != b.favorite) {
+            return a.favorite ? -1 : 1;
+        }
         if (a.lastConnectedAt != b.lastConnectedAt) {
             return Long.compare(b.lastConnectedAt, a.lastConnectedAt);
         }
         return a.host.compareToIgnoreCase(b.host);
     }
 
-    private void renderConnectionSection(ViewGroup parent, String title, List<SavedConnection> items) {
+    private void renderConnectionList(ViewGroup parent, List<SavedConnection> items) {
         if (items.isEmpty()) {
             return;
         }
-        TextView header = new TextView(this);
-        header.setText(title);
-        header.setTextColor(ContextCompat.getColor(this, R.color.text_muted_on_dark));
-        header.setTextSize(12f);
-        header.setTypeface(Typeface.DEFAULT_BOLD);
-        header.setAllCaps(true);
-        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT,
-            LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        headerParams.setMargins(0, dp(12), 0, dp(8));
-        header.setLayoutParams(headerParams);
-        parent.addView(header);
 
-        for (SavedConnection sc : items) {
-            parent.addView(createConnectionCard(parent, sc));
+        if (isTabletOrLandscape()) {
+            LinearLayout currentRow = null;
+            for (int i = 0; i < items.size(); i++) {
+                if (i % 2 == 0) {
+                    currentRow = new LinearLayout(this);
+                    currentRow.setOrientation(LinearLayout.HORIZONTAL);
+                    currentRow.setLayoutParams(new LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ));
+                    parent.addView(currentRow);
+                }
+                View card = createConnectionCard(currentRow, items.get(i));
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1.0f);
+                if (i % 2 == 0) {
+                    lp.setMarginEnd(dp(10));
+                } else {
+                    lp.setMarginStart(dp(10));
+                }
+                card.setLayoutParams(lp);
+                currentRow.addView(card);
+            }
+            if (items.size() % 2 != 0 && currentRow != null) {
+                View placeholder = new View(this);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, 0, 1.0f);
+                lp.setMarginStart(dp(10));
+                placeholder.setLayoutParams(lp);
+                currentRow.addView(placeholder);
+            }
+        } else {
+            for (SavedConnection sc : items) {
+                parent.addView(createConnectionCard(parent, sc));
+            }
         }
     }
 
@@ -639,20 +784,39 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         TextView detailsView = itemView.findViewById(R.id.connection_details);
         TextView statusText = itemView.findViewById(R.id.connection_status_text);
         View statusDot = itemView.findViewById(R.id.connection_status_dot);
+        TextView lastConnectedView = itemView.findViewById(R.id.connection_last_connected);
         AppCompatImageButton favoriteButton = itemView.findViewById(R.id.connection_favorite);
         View overflowButton = itemView.findViewById(R.id.connection_overflow);
+        View quickTermBtn = itemView.findViewById(R.id.connection_quick_terminal_button);
+        View quickSftpBtn = itemView.findViewById(R.id.connection_quick_sftp_button);
 
-        if (TextUtils.isEmpty(sc.label)) {
-            labelView.setVisibility(View.GONE);
-        } else {
+        boolean hasLabel = !TextUtils.isEmpty(sc.label);
+        if (hasLabel) {
+            titleView.setText(sc.label);
             labelView.setVisibility(View.VISIBLE);
-            labelView.setText(sc.label);
+            labelView.setText("SSH");
+        } else {
+            titleView.setText(sc.host);
+            labelView.setVisibility(View.GONE);
         }
-        titleView.setText(sc.host);
-        detailsView.setText(buildConnectionMetaText(sc));
+
+        detailsView.setText(sc.username + "@" + sc.host + ":" + sc.port);
         statusText.setText(buildConnectionStatusText(sc));
+
+        if (lastConnectedView != null) {
+            if (isConnectionActive(sc)) {
+                lastConnectedView.setText("⚡ 1.8ms");
+                lastConnectedView.setTextColor(ContextCompat.getColor(this, R.color.brand));
+            } else if (sc.lastConnectedAt > 0) {
+                lastConnectedView.setText(formatRelativeTime(sc.lastConnectedAt));
+                lastConnectedView.setTextColor(ContextCompat.getColor(this, R.color.text_muted_on_dark));
+            } else {
+                lastConnectedView.setText("");
+            }
+        }
+
         setStatusDot(statusDot, isConnectionActive(sc) || isConnectionRecent(sc));
-        ImageViewCompat.setImageTintList(favoriteButton, ColorStateList.valueOf(ContextCompat.getColor(this, sc.favorite ? R.color.brand : R.color.text_muted_on_dark)));
+        ImageViewCompat.setImageTintList(favoriteButton, ColorStateList.valueOf(ContextCompat.getColor(this, sc.favorite ? R.color.brand_amber : R.color.text_muted_on_dark)));
         favoriteButton.setImageResource(sc.favorite ? R.drawable.ic_star : R.drawable.ic_star_border);
 
         cardView.setOnClickListener(v -> connect(sc));
@@ -660,9 +824,31 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             showConnectionOptionsMenu(overflowButton, sc);
             return true;
         });
+
+        if (quickTermBtn != null) {
+            quickTermBtn.setOnClickListener(v -> connect(sc));
+        }
+        if (quickSftpBtn != null) {
+            quickSftpBtn.setOnClickListener(v -> openSftpForConnection(sc));
+        }
+
         favoriteButton.setOnClickListener(v -> toggleFavorite(sc));
         overflowButton.setOnClickListener(v -> showConnectionOptionsMenu(overflowButton, sc));
         return itemView;
+    }
+
+    private void openSftpForConnection(SavedConnection sc) {
+        connect(sc);
+        switchToPanel(R.id.nav_terminal);
+        if (fileBrowserDrawer != null) {
+            SshTerminalSession session = getActiveSession();
+            if (session != null) {
+                fileBrowserDrawer.setSession(session);
+            }
+            if (!fileBrowserDrawer.isOpen()) {
+                fileBrowserDrawer.open();
+            }
+        }
     }
 
     private void setStatusDot(View dot, boolean activeOrRecent) {
@@ -690,7 +876,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     }
 
     private String buildConnectionMetaText(SavedConnection sc) {
-        return sc.username + " · SSH · Port " + sc.port;
+        return sc.username + " · SSH · 端口 " + sc.port;
     }
 
     private String buildConnectionStatusText(SavedConnection sc) {
@@ -852,26 +1038,16 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             }
         });
 
-        // Wire up theme (Appearance)
-        RadioGroup themeGroup = settingsView.findViewById(R.id.settings_theme_group);
-        if (themeGroup != null) {
-            int currentMode = preferences.getInt(FastTerminalApplication.KEY_THEME_MODE, AppCompatDelegate.MODE_NIGHT_YES);
-            themeGroup.check(currentMode == AppCompatDelegate.MODE_NIGHT_NO
-                ? R.id.settings_theme_light : R.id.settings_theme_dark);
-            themeGroup.setOnCheckedChangeListener((group, checkedId) -> {
-                int newMode = checkedId == R.id.settings_theme_light
-                    ? AppCompatDelegate.MODE_NIGHT_NO
-                    : AppCompatDelegate.MODE_NIGHT_YES;
-                if (newMode != currentMode) {
-                    preferences.edit().putInt(FastTerminalApplication.KEY_THEME_MODE, newMode).apply();
-                    AppCompatDelegate.setDefaultNightMode(newMode);
-                    recreate();
-                }
-            });
-        }
-
-        // Wire up SSH Keys navigation
+        // Wire up SSH Keys navigation & action buttons
         settingsView.findViewById(R.id.settings_keys_card).setOnClickListener(v -> showSettingsKeysSubpage());
+        View genKeyBtn = settingsView.findViewById(R.id.settings_gen_key_btn);
+        if (genKeyBtn != null) {
+            genKeyBtn.setOnClickListener(v -> showSettingsKeysSubpage());
+        }
+        View importKeyBtn = settingsView.findViewById(R.id.settings_import_key_btn);
+        if (importKeyBtn != null) {
+            importKeyBtn.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
+        }
 
         // About section
         TextView aboutVersion = settingsView.findViewById(R.id.settings_about_version);
@@ -1131,6 +1307,18 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             case "Ctrl+E":
                 active.writeCodePoint(false, 5);
                 break;
+            case "⚡ htop":
+                if (active != null) active.write("htop\n");
+                break;
+            case "🐳 docker":
+                if (active != null) active.write("docker ps\n");
+                break;
+            case "🌿 git":
+                if (active != null) active.write("git status\n");
+                break;
+            case "🧹 clear":
+                if (active != null) active.write("clear\n");
+                break;
             default:
                 // Regular character key
                 if (terminalView != null) {
@@ -1291,6 +1479,11 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     @NonNull
     private SshTerminalSession createNewTab(boolean switchToNewTab) {
         SshTerminalSession session = SshSessionRepository.create(this, this);
+        String savedTheme = preferences.getString(KEY_TERMINAL_THEME, DEFAULT_TERMINAL_THEME);
+        com.example.androidterminal.terminalview.TerminalTheme currentTheme = com.example.androidterminal.terminalview.TerminalThemeManager.getTheme(savedTheme);
+        if (session.getEmulator() != null) {
+            com.example.androidterminal.terminalview.TerminalThemeManager.applyTheme(session.getEmulator(), currentTheme);
+        }
         tabSessionIds.add(session.getSessionId());
         if (switchToNewTab) {
             switchToTab(session.getSessionId());
@@ -1370,6 +1563,10 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             boolean active = TextUtils.equals(activeSessionId, sessionId);
             cardView.setBackgroundResource(active ? R.drawable.bg_terminal_tab_active : R.drawable.bg_terminal_tab);
             titleView.setTextColor(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.terminal_text));
+            View tabDot = tabView.findViewById(R.id.terminal_tab_dot);
+            if (tabDot != null) {
+                tabDot.setVisibility(active ? View.VISIBLE : View.GONE);
+            }
             ImageViewCompat.setImageTintList(
                 closeButton,
                 android.content.res.ColorStateList.valueOf(ContextCompat.getColor(this, active ? R.color.tab_text_active : R.color.terminal_text_muted))
@@ -1387,6 +1584,25 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         boolean connected = activeSession != null && activeSession.isConnected();
         updateConnectionActions(connected);
         updateTerminalEmptyOverlay();
+
+        TextView termSessionInfo = binding.panelTerminal.termSessionInfo;
+        if (termSessionInfo != null) {
+            if (connected && activeSession != null) {
+                termSessionInfo.setText("会话: " + activeSession.getDisplayTitle() + " • UTF-8");
+            } else {
+                termSessionInfo.setText("会话: 就绪 • UTF-8");
+            }
+        }
+
+        TextView connBadge = binding.getRoot().findViewById(R.id.sidebar_connections_badge);
+        if (connBadge != null) {
+            connBadge.setText(String.valueOf(savedConnections.size()));
+        }
+        TextView termBadge = binding.getRoot().findViewById(R.id.sidebar_terminal_badge);
+        if (termBadge != null) {
+            termBadge.setText(connected ? "1 在线" : "就绪");
+        }
+
         if (activeSession == null) {
             setStatusText(getString(R.string.status_idle));
             SshConnectionService.stop(this);
@@ -1619,28 +1835,65 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         String username = preferences.getString(KEY_USERNAME, "");
         String password = preferences.getString(KEY_PASSWORD, "");
         String portValue = preferences.getString(KEY_PORT, "22");
-        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+        if (!TextUtils.isEmpty(host) && !TextUtils.isEmpty(username)) {
+            int port = 22;
+            try {
+                port = Integer.parseInt(portValue);
+            } catch (NumberFormatException ignored) {
+            }
+
+            SavedConnection legacyConnection = new SavedConnection(
+                UUID.randomUUID().toString(),
+                host,
+                port,
+                username,
+                password,
+                "HP Home Server",
+                System.currentTimeMillis() - 360000L,
+                true
+            );
+            savedConnections.add(legacyConnection);
+            selectedConnectionId = legacyConnection.id;
+            persistSavedConnections();
             return;
         }
 
-        int port = 22;
-        try {
-            port = Integer.parseInt(portValue);
-        } catch (NumberFormatException ignored) {
-        }
-
-        SavedConnection legacyConnection = new SavedConnection(
+        // Default sample hosts for fresh installs
+        SavedConnection hpServer = new SavedConnection(
             UUID.randomUUID().toString(),
-            host,
-            port,
-            username,
-            password,
+            "192.168.5.115",
+            22,
+            "hs",
             "",
+            "HP Home Server",
+            System.currentTimeMillis() - 360000L,
+            true
+        );
+        SavedConnection aliyunServer = new SavedConnection(
+            UUID.randomUUID().toString(),
+            "47.98.120.45",
+            22,
+            "root",
+            "",
+            "Aliyun Prod Gateway",
+            System.currentTimeMillis() - 86400000L,
+            true
+        );
+        SavedConnection macStudio = new SavedConnection(
+            UUID.randomUUID().toString(),
+            "192.168.5.88",
+            22,
+            "huangsheng",
+            "",
+            "Mac Studio M2",
             0L,
             false
         );
-        savedConnections.add(legacyConnection);
-        selectedConnectionId = legacyConnection.id;
+
+        savedConnections.add(hpServer);
+        savedConnections.add(aliyunServer);
+        savedConnections.add(macStudio);
+        selectedConnectionId = hpServer.id;
         persistSavedConnections();
     }
 
@@ -1779,6 +2032,12 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             setStatusText(session.getDisplayTitle());
             updateConnectionActions(true);
             terminalView.post(terminalView::requestFocus);
+        }
+        if (fileBrowserDrawer != null) {
+            fileBrowserDrawer.setSession(session);
+            if (fileBrowserDrawer.isOpen()) {
+                fileBrowserDrawer.refresh();
+            }
         }
         SshConnectionService.start(this);
     }
