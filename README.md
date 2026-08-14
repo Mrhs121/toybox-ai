@@ -3,6 +3,39 @@ Toys written by ai
 
 用 ai 写的一些小玩具
 
+## 📱 FastTerminal - [fastTerminal](./fastTerminal)
+
+一个把 PC 端终端体验搬到 Android 上的 SSH 客户端，专为横屏平板、外接键盘和鼠标设计。
+
+**核心特性：**
+
+- **平板级侧边栏导航** — 服务器列表、终端会话、SFTP 文件传输、偏好与设置四大面板，横屏下使用左侧导航，连接管理更像桌面级生产力工具
+- **现代化服务器列表与圆角矩阵** — 20dp 卡片超椭圆圆角设计，单行内嵌式搜索与过滤胶囊（全部 / ⭐ 常用 / 🏠 局域网 / 🚀 云端），实时显示在线状态、延迟与最近连接时间
+- **终端多主题实时切换** — 内置 One Dark、Tokyo Night、Catppuccin Mocha、Dracula、Solarized Dark、Nord、Monokai 等 7 大经典配色，支持实时下拉切换
+- **多 Tab 会话管理** — 同时打开多条远程连接，顶部 Tab 栏快速切换，支持 `Ctrl+T` 新建、`Ctrl+W` 关闭、`Ctrl+←/→` 快速切换
+- **机械按键质感快捷栏** — 底部两行快捷键（特殊字符、修饰键、方向键、常用组合键及一键宏），手机与平板软键盘输入极度舒适
+- **PC 级鼠标交互与剪贴板** — 鼠标左键拖拽选中文本，右键弹出粘贴菜单；支持 `Ctrl+C/V` 快捷键，物理 `Esc` 键不会误触 Android 返回
+- **伴随式 SFTP 文件浏览器** — 平板横屏下伴随终端分屏展示，支持远程文件浏览、面包屑导航、文件上传、新建文件夹、重命名与删除
+- **Nerd Font 字体支持** — 内置 JetBrainsMono Nerd Font，终端下 Powerline、Starship 提示符与开发图标完美渲染
+
+下载 APK：[GitHub Releases](https://github.com/Mrhs121/toybox-ai/releases)
+
+### 界面预览
+
+| 服务器列表 (Connections) | 终端会话 (Terminal) |
+|:---:|:---:|
+| ![FastTerminal Connections](./img/fastterminal-connections-v2.png) | ![FastTerminal Terminal](./img/fastterminal-terminal-v2.png) |
+
+| SFTP 文件传输 (SFTP Browser) | 偏好与设置 (Settings) |
+|:---:|:---:|
+| ![FastTerminal SFTP](./img/fastterminal-sftp-v2.png) | ![FastTerminal Settings](./img/fastterminal-settings-v2.png) |
+
+演示预览：
+[![fastTerminal demo](./img/fastTerminal-demo.gif)](./img/fastTerminal-demo.mp4)
+
+完整视频：
+[fastTerminal-demo.mp4](./img/fastTerminal-demo.mp4)
+
 ## 🖥️ Chat Viewer 桌面版 - [chat-viewer](./chat-viewer)
 
 基于 Electron 的 Claude Code & Codex 对话记录查看器桌面客户端。支持自动扫描本地对话文件、按项目分组浏览、深色/浅色主题切换、工具消息折叠、搜索过滤，以及 Markdown/HTML 导出。
@@ -94,37 +127,3 @@ swift run MarkdownViewer
 | 收款码结算 | 经营分析 | 订单明细 |
 |:---:|:---:|:---:|
 | ![收款码结算](./mini-pos/screenshots/qrcode.jpg) | ![经营分析](./mini-pos/screenshots/stats.jpg) | ![订单明细](./mini-pos/screenshots/order-detail.jpg) |
-
-## 📱 FastTerminal - [fastTerminal](./fastTerminal)
-
-一个把 PC 端终端体验搬到 Android 上的 SSH 客户端，专为横屏平板、外接键盘和鼠标设计。
-
-**核心特性：**
-
-- **平板级侧边栏导航** — 服务器列表、终端会话、SFTP 文件传输、偏好与设置四大面板，横屏下使用左侧导航，连接管理更像桌面级生产力工具
-- **现代化服务器列表与圆角矩阵** — 20dp 卡片超椭圆圆角设计，单行内嵌式搜索与过滤胶囊（全部 / ⭐ 常用 / 🏠 局域网 / 🚀 云端），实时显示在线状态、延迟与最近连接时间
-- **终端多主题实时切换** — 内置 One Dark、Tokyo Night、Catppuccin Mocha、Dracula、Solarized Dark、Nord、Monokai 等 7 大经典配色，支持实时下拉切换
-- **多 Tab 会话管理** — 同时打开多条远程连接，顶部 Tab 栏快速切换，支持 `Ctrl+T` 新建、`Ctrl+W` 关闭、`Ctrl+←/→` 快速切换
-- **机械按键质感快捷栏** — 底部两行快捷键（特殊字符、修饰键、方向键、常用组合键及一键宏），手机与平板软键盘输入极度舒适
-- **PC 级鼠标交互与剪贴板** — 鼠标左键拖拽选中文本，右键弹出粘贴菜单；支持 `Ctrl+C/V` 快捷键，物理 `Esc` 键不会误触 Android 返回
-- **伴随式 SFTP 文件浏览器** — 平板横屏下伴随终端分屏展示，支持远程文件浏览、面包屑导航、文件上传、新建文件夹、重命名与删除
-- **Nerd Font 字体支持** — 内置 JetBrainsMono Nerd Font，终端下 Powerline、Starship 提示符与开发图标完美渲染
-
-下载 APK：[GitHub Releases](https://github.com/Mrhs121/toybox-ai/releases)
-
-### 界面预览
-
-| 服务器列表 (Connections) | 终端会话 (Terminal) |
-|:---:|:---:|
-| ![FastTerminal Connections](./img/fastterminal-connections-v2.png) | ![FastTerminal Terminal](./img/fastterminal-terminal-v2.png) |
-
-| SFTP 文件传输 (SFTP Browser) | 偏好与设置 (Settings) |
-|:---:|:---:|
-| ![FastTerminal SFTP](./img/fastterminal-sftp-v2.png) | ![FastTerminal Settings](./img/fastterminal-settings-v2.png) |
-
-演示预览：
-[![fastTerminal demo](./img/fastTerminal-demo.gif)](./img/fastTerminal-demo.mp4)
-
-完整视频：
-[fastTerminal-demo.mp4](./img/fastTerminal-demo.mp4)
-
