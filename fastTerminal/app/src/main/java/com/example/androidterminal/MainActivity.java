@@ -811,10 +811,12 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 if (i % 2 == 0) {
                     currentRow = new LinearLayout(this);
                     currentRow.setOrientation(LinearLayout.HORIZONTAL);
-                    currentRow.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams rowLp = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT,
                         LinearLayout.LayoutParams.WRAP_CONTENT
-                    ));
+                    );
+                    rowLp.bottomMargin = dp(16);
+                    currentRow.setLayoutParams(rowLp);
                     parent.addView(currentRow);
                 }
                 View card = createConnectionCard(currentRow, items.get(i));
@@ -836,7 +838,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             }
         } else {
             for (SavedConnection sc : items) {
-                parent.addView(createConnectionCard(parent, sc));
+                View card = createConnectionCard(parent, sc);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                );
+                lp.bottomMargin = dp(16);
+                card.setLayoutParams(lp);
+                parent.addView(card);
             }
         }
     }
