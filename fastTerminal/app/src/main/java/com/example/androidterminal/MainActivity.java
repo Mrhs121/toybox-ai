@@ -1,5 +1,8 @@
 package com.example.androidterminal;
 
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -11,6 +14,8 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.GradientDrawable;
+import android.view.animation.DecelerateInterpolator;
+import androidx.interpolator.view.animation.FastOutSlowInInterpolator;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -131,11 +136,15 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
     private static final String KEY_SIDEBAR_COLLAPSED = "sidebar_collapsed";
     private boolean sidebarCollapsed = false;
     private View sidebarRoot;
+    private View sidebarContent;
     private View sidebarDivider;
     private View sidebarCollapseButton;
     private View termSidebarToggle;
+    private View termSidebarToggleContainer;
     private View connectionsSidebarToggle;
+    private View connectionsSidebarToggleContainer;
     private View settingsSidebarToggle;
+    private View settingsSidebarToggleContainer;
 
     private static final int FILTER_ALL = 0;
     private static final int FILTER_FAV = 1;
@@ -490,11 +499,15 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         if (settings != null) settings.setOnClickListener(v -> switchToPanel(R.id.nav_settings));
 
         sidebarRoot = binding.getRoot().findViewById(R.id.sidebar_root);
+        sidebarContent = binding.getRoot().findViewById(R.id.sidebar_content);
         sidebarDivider = binding.getRoot().findViewById(R.id.sidebar_divider);
         sidebarCollapseButton = binding.getRoot().findViewById(R.id.sidebar_collapse_button);
         termSidebarToggle = binding.panelTerminal.termSidebarToggleButton;
+        termSidebarToggleContainer = binding.panelTerminal.getRoot().findViewById(R.id.term_sidebar_toggle_container);
         connectionsSidebarToggle = panelConnections.findViewById(R.id.connections_sidebar_toggle);
+        connectionsSidebarToggleContainer = panelConnections.findViewById(R.id.connections_sidebar_toggle_container);
         settingsSidebarToggle = panelSettings.findViewById(R.id.settings_sidebar_toggle);
+        settingsSidebarToggleContainer = panelSettings.findViewById(R.id.settings_sidebar_toggle_container);
 
         sidebarCollapsed = preferences.getBoolean(KEY_SIDEBAR_COLLAPSED, false);
 
@@ -514,6 +527,17 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         updateSidebarVisibility(false);
     }
 
+    private void setContainerWidth(View container, int width) {
+        if (container == null) return;
+        ViewGroup.LayoutParams lp = container.getLayoutParams();
+        if (lp != null && lp.width != width) {
+            lp.width = width;
+            container.setLayoutParams(lp);
+        }
+    }
+
+    private ValueAnimator sidebarAnimator;
+
     public void toggleSidebar() {
         setSidebarCollapsed(!sidebarCollapsed, true);
     }
@@ -531,19 +555,129 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             return;
         }
 
+        if (sidebarAnimator != null) {
+            sidebarAnimator.cancel();
+            sidebarAnimator = null;
+        }
+
+        int defaultWidth = dp(220);
+        int connToggleWidth = dp(46);
+        int termToggleWidth = dp(40);
+        int settToggleWidth = dp(44);
+
+        if (!animate) {
+            ViewGroup.LayoutParams lp = sidebarRoot.getLayoutParams();
+            if (sidebarCollapsed) {
+                sidebarRoot.setVisibility(View.GONE);
+                sidebarRoot.setAlpha(1.0f);
+                if (sidebarContent != null) sidebarContent.setTranslationX(-defaultWidth);
+                if (sidebarDivider != null) sidebarDivider.setVisibility(View.GONE);
+                if (termSidebarToggleContainer != null) { setContainerWidth(termSidebarToggleContainer, termToggleWidth); termSidebarToggleContainer.setVisibility(View.VISIBLE); }
+                if (connectionsSidebarToggleContainer != null) { setContainerWidth(connectionsSidebarToggleContainer, connToggleWidth); connectionsSidebarToggleContainer.setVisibility(View.VISIBLE); }
+                if (settingsSidebarToggleContainer != null) { setContainerWidth(settingsSidebarToggleContainer, settToggleWidth); settingsSidebarToggleContainer.setVisibility(View.VISIBLE); }
+                if (termSidebarToggle != null) termSidebarToggle.setAlpha(1.0f);
+                if (connectionsSidebarToggle != null) connectionsSidebarToggle.setAlpha(1.0f);
+                if (settingsSidebarToggle != null) settingsSidebarToggle.setAlpha(1.0f);
+            } else {
+                sidebarRoot.setVisibility(View.VISIBLE);
+                lp.width = defaultWidth;
+                sidebarRoot.setLayoutParams(lp);
+                sidebarRoot.setAlpha(1.0f);
+                if (sidebarContent != null) sidebarContent.setTranslationX(0f);
+                if (sidebarDivider != null) sidebarDivider.setVisibility(View.VISIBLE);
+                if (termSidebarToggleContainer != null) { setContainerWidth(termSidebarToggleContainer, 0); termSidebarToggleContainer.setVisibility(View.GONE); }
+                if (connectionsSidebarToggleContainer != null) { setContainerWidth(connectionsSidebarToggleContainer, 0); connectionsSidebarToggleContainer.setVisibility(View.GONE); }
+                if (settingsSidebarToggleContainer != null) { setContainerWidth(settingsSidebarToggleContainer, 0); settingsSidebarToggleContainer.setVisibility(View.GONE); }
+            }
+            return;
+        }
+
+        int currentWidth = sidebarRoot.getVisibility() == View.VISIBLE && sidebarRoot.getWidth() > 0
+                ? sidebarRoot.getWidth()
+                : (sidebarCollapsed ? defaultWidth : 0);
+        int targetWidth = sidebarCollapsed ? 0 : defaultWidth;
+
         if (sidebarCollapsed) {
-            sidebarRoot.setVisibility(View.GONE);
-            if (sidebarDivider != null) sidebarDivider.setVisibility(View.GONE);
-            if (termSidebarToggle != null) termSidebarToggle.setVisibility(View.VISIBLE);
-            if (connectionsSidebarToggle != null) connectionsSidebarToggle.setVisibility(View.VISIBLE);
-            if (settingsSidebarToggle != null) settingsSidebarToggle.setVisibility(View.VISIBLE);
+            // Collapsing: Show toggle containers at 0 width and prepare to expand them smoothly
+            if (termSidebarToggleContainer != null) { setContainerWidth(termSidebarToggleContainer, 0); termSidebarToggleContainer.setVisibility(View.VISIBLE); }
+            if (connectionsSidebarToggleContainer != null) { setContainerWidth(connectionsSidebarToggleContainer, 0); connectionsSidebarToggleContainer.setVisibility(View.VISIBLE); }
+            if (settingsSidebarToggleContainer != null) { setContainerWidth(settingsSidebarToggleContainer, 0); settingsSidebarToggleContainer.setVisibility(View.VISIBLE); }
+            if (termSidebarToggle != null) termSidebarToggle.setAlpha(0.0f);
+            if (connectionsSidebarToggle != null) connectionsSidebarToggle.setAlpha(0.0f);
+            if (settingsSidebarToggle != null) settingsSidebarToggle.setAlpha(0.0f);
         } else {
             sidebarRoot.setVisibility(View.VISIBLE);
+            sidebarRoot.setAlpha(1.0f);
+            if (sidebarContent != null) sidebarContent.setTranslationX(-defaultWidth + currentWidth);
             if (sidebarDivider != null) sidebarDivider.setVisibility(View.VISIBLE);
-            if (termSidebarToggle != null) termSidebarToggle.setVisibility(View.GONE);
-            if (connectionsSidebarToggle != null) connectionsSidebarToggle.setVisibility(View.GONE);
-            if (settingsSidebarToggle != null) settingsSidebarToggle.setVisibility(View.GONE);
         }
+
+        sidebarAnimator = ValueAnimator.ofInt(currentWidth, targetWidth);
+        sidebarAnimator.setDuration(240);
+        sidebarAnimator.setInterpolator(new FastOutSlowInInterpolator());
+        sidebarAnimator.addUpdateListener(anim -> {
+            int val = (Integer) anim.getAnimatedValue();
+            ViewGroup.LayoutParams lp = sidebarRoot.getLayoutParams();
+            lp.width = val;
+            sidebarRoot.setLayoutParams(lp);
+
+            if (sidebarContent != null) {
+                sidebarContent.setTranslationX(val - defaultWidth);
+            }
+
+            float fraction = anim.getAnimatedFraction();
+            if (sidebarCollapsed) {
+                setContainerWidth(connectionsSidebarToggleContainer, Math.round(connToggleWidth * fraction));
+                setContainerWidth(termSidebarToggleContainer, Math.round(termToggleWidth * fraction));
+                setContainerWidth(settingsSidebarToggleContainer, Math.round(settToggleWidth * fraction));
+
+                float toggleAlpha = Math.min(1.0f, fraction * 1.5f);
+                if (termSidebarToggle != null) termSidebarToggle.setAlpha(toggleAlpha);
+                if (connectionsSidebarToggle != null) connectionsSidebarToggle.setAlpha(toggleAlpha);
+                if (settingsSidebarToggle != null) settingsSidebarToggle.setAlpha(toggleAlpha);
+            } else {
+                setContainerWidth(connectionsSidebarToggleContainer, Math.round(connToggleWidth * (1.0f - fraction)));
+                setContainerWidth(termSidebarToggleContainer, Math.round(termToggleWidth * (1.0f - fraction)));
+                setContainerWidth(settingsSidebarToggleContainer, Math.round(settToggleWidth * (1.0f - fraction)));
+
+                float toggleAlpha = Math.max(0f, 1.0f - fraction * 1.5f);
+                if (termSidebarToggle != null) termSidebarToggle.setAlpha(toggleAlpha);
+                if (connectionsSidebarToggle != null) connectionsSidebarToggle.setAlpha(toggleAlpha);
+                if (settingsSidebarToggle != null) settingsSidebarToggle.setAlpha(toggleAlpha);
+            }
+        });
+        sidebarAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                if (sidebarCollapsed) {
+                    sidebarRoot.setVisibility(View.GONE);
+                    if (sidebarDivider != null) sidebarDivider.setVisibility(View.GONE);
+                    if (sidebarContent != null) sidebarContent.setTranslationX(-defaultWidth);
+                    setContainerWidth(connectionsSidebarToggleContainer, connToggleWidth);
+                    setContainerWidth(termSidebarToggleContainer, termToggleWidth);
+                    setContainerWidth(settingsSidebarToggleContainer, settToggleWidth);
+                    if (termSidebarToggle != null) termSidebarToggle.setAlpha(1.0f);
+                    if (connectionsSidebarToggle != null) connectionsSidebarToggle.setAlpha(1.0f);
+                    if (settingsSidebarToggle != null) settingsSidebarToggle.setAlpha(1.0f);
+                } else {
+                    ViewGroup.LayoutParams lp = sidebarRoot.getLayoutParams();
+                    lp.width = defaultWidth;
+                    sidebarRoot.setLayoutParams(lp);
+                    if (sidebarContent != null) sidebarContent.setTranslationX(0f);
+                    setContainerWidth(connectionsSidebarToggleContainer, 0);
+                    setContainerWidth(termSidebarToggleContainer, 0);
+                    setContainerWidth(settingsSidebarToggleContainer, 0);
+                    if (connectionsSidebarToggleContainer != null) connectionsSidebarToggleContainer.setVisibility(View.GONE);
+                    if (termSidebarToggleContainer != null) termSidebarToggleContainer.setVisibility(View.GONE);
+                    if (settingsSidebarToggleContainer != null) settingsSidebarToggleContainer.setVisibility(View.GONE);
+                }
+                if (terminalView != null) {
+                    terminalView.requestLayout();
+                }
+                sidebarAnimator = null;
+            }
+        });
+        sidebarAnimator.start();
     }
 
     private void switchToPanel(int panelId) {

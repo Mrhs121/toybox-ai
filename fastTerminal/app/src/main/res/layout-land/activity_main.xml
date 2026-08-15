@@ -14,117 +14,128 @@
         android:orientation="horizontal">
 
         <!-- Sidebar Navigation -->
-        <LinearLayout
+        <FrameLayout
             android:id="@+id/sidebar_root"
             android:layout_width="210dp"
             android:layout_height="match_parent"
-            android:background="@color/sidebar_surface"
-            android:orientation="vertical"
-            android:paddingStart="14dp"
-            android:paddingTop="16dp"
-            android:paddingEnd="14dp"
-            android:paddingBottom="16dp">
+            android:clipChildren="true"
+            android:clipToPadding="true">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <FrameLayout
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:background="@drawable/bg_logo_gradient">
-
-                    <androidx.appcompat.widget.AppCompatImageView
-                        android:layout_width="15dp"
-                        android:layout_height="15dp"
-                        android:layout_gravity="center"
-                        android:contentDescription="@string/app_name"
-                        android:src="@drawable/ic_terminal"
-                        android:tint="#041014" />
-                </FrameLayout>
-
-                <TextView
-                    android:id="@+id/sidebar_brand_label"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:layout_weight="1"
-                    android:letterSpacing="-0.01"
-                    android:text="@string/app_name"
-                    android:textColor="@color/text_on_dark"
-                    android:textSize="17sp"
-                    android:textStyle="bold" />
-
-                <androidx.appcompat.widget.AppCompatImageButton
-                    android:id="@+id/sidebar_collapse_button"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:background="?attr/selectableItemBackgroundBorderless"
-                    android:contentDescription="收起侧边栏"
-                    android:padding="5dp"
-                    android:src="@drawable/ic_sidebar_toggle"
-                    android:tint="@color/text_muted_on_dark" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <View
-                    android:id="@+id/sidebar_status_dot"
-                    android:layout_width="8dp"
-                    android:layout_height="8dp"
-                    android:background="@drawable/bg_status_dot_glow" />
-
-                <TextView
-                    android:id="@+id/sidebar_status_text"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:maxLines="1"
-                    android:text="@string/status_idle"
-                    android:textColor="@color/text_muted_on_dark"
-                    android:textSize="11sp" />
-            </LinearLayout>
-
-            <include layout="@layout/view_sidebar_nav_items" />
-
-            <Space
-                android:layout_width="1dp"
-                android:layout_height="0dp"
-                android:layout_weight="1" />
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_file_row"
+                android:id="@+id/sidebar_content"
+                android:layout_width="210dp"
+                android:layout_height="match_parent"
+                android:background="@color/sidebar_surface"
                 android:orientation="vertical"
-                android:padding="8dp">
+                android:paddingStart="14dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="14dp"
+                android:paddingBottom="16dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="FastTerminal v2.0"
-                    android:textColor="@color/text_muted_on_dark"
-                    android:textSize="10sp"
-                    android:textStyle="bold" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <FrameLayout
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:background="@drawable/bg_logo_gradient">
+
+                        <androidx.appcompat.widget.AppCompatImageView
+                            android:layout_width="14dp"
+                            android:layout_height="14dp"
+                            android:layout_gravity="center"
+                            android:contentDescription="@string/app_name"
+                            android:src="@drawable/ic_terminal"
+                            android:tint="#041014" />
+                    </FrameLayout>
+
+                    <TextView
+                        android:id="@+id/sidebar_brand_label"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:letterSpacing="-0.02"
+                        android:maxLines="1"
+                        android:text="@string/app_name"
+                        android:textColor="@color/text_on_dark"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <androidx.appcompat.widget.AppCompatImageButton
+                        android:id="@+id/sidebar_collapse_button"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_sidebar_toggle_btn"
+                        android:contentDescription="收起侧边栏 (Ctrl+Shift+B)"
+                        android:padding="4dp"
+                        android:src="@drawable/ic_sidebar_collapse"
+                        android:tint="@color/text_muted_on_dark" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="SSH • SFTP • Terminal"
-                    android:textColor="@color/brand"
-                    android:textSize="9.5sp" />
+                    android:layout_marginTop="6dp"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/sidebar_status_dot"
+                        android:layout_width="8dp"
+                        android:layout_height="8dp"
+                        android:background="@drawable/bg_status_dot_glow" />
+
+                    <TextView
+                        android:id="@+id/sidebar_status_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:layout_weight="1"
+                        android:ellipsize="end"
+                        android:maxLines="1"
+                        android:text="@string/status_idle"
+                        android:textColor="@color/text_muted_on_dark"
+                        android:textSize="11sp" />
+                </LinearLayout>
+
+                <include layout="@layout/view_sidebar_nav_items" />
+
+                <Space
+                    android:layout_width="1dp"
+                    android:layout_height="0dp"
+                    android:layout_weight="1" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_file_row"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="FastTerminal v2.0"
+                        android:textColor="@color/text_muted_on_dark"
+                        android:textSize="10sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="SSH • SFTP • Terminal"
+                        android:textColor="@color/brand"
+                        android:textSize="9.5sp" />
+                </LinearLayout>
             </LinearLayout>
-        </LinearLayout>
+        </FrameLayout>
 
         <View
             android:id="@+id/sidebar_divider"

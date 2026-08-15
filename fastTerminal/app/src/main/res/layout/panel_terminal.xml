@@ -17,17 +17,25 @@
         android:paddingStart="8dp"
         android:paddingEnd="8dp">
 
-        <androidx.appcompat.widget.AppCompatImageButton
-            android:id="@+id/term_sidebar_toggle_button"
-            android:layout_width="32dp"
+        <FrameLayout
+            android:id="@+id/term_sidebar_toggle_container"
+            android:layout_width="0dp"
             android:layout_height="32dp"
-            android:layout_marginEnd="6dp"
-            android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="切换侧边栏"
-            android:padding="6dp"
-            android:src="@drawable/ic_sidebar_toggle"
-            android:tint="@color/brand"
-            android:visibility="gone" />
+            android:clipChildren="true"
+            android:clipToPadding="true"
+            android:visibility="gone">
+
+            <androidx.appcompat.widget.AppCompatImageButton
+                android:id="@+id/term_sidebar_toggle_button"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_sidebar_toggle_btn"
+                android:contentDescription="展开侧边栏 (Ctrl+Shift+B)"
+                android:padding="6dp"
+                android:src="@drawable/ic_sidebar_expand"
+                android:tint="@color/brand" />
+        </FrameLayout>
 
         <HorizontalScrollView
             android:layout_width="0dp"
