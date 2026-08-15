@@ -1724,7 +1724,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     @Nullable
     private SshConnectionConfig buildConnectionConfig(String host, String portValue, String username, String password) {
-        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username) || TextUtils.isEmpty(password)) {
+        if (TextUtils.isEmpty(host) || TextUtils.isEmpty(username)) {
             toast(getString(R.string.missing_connection_info));
             return null;
         }
@@ -1739,7 +1739,7 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             }
         }
 
-        return new SshConnectionConfig(host, port, username, password);
+        return new SshConnectionConfig(host, port, username, password != null ? password : "");
     }
 
     private void showConnectionEditor(@Nullable SavedConnection existingConnection) {
@@ -1801,25 +1801,14 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
                 return;
             }
 
-            new MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.save_before_connect_title)
-                .setMessage(R.string.save_before_connect_message)
-                .setNegativeButton(R.string.connect_without_saving_action, (confirmDialog, which) -> {
-                    dialog.dismiss();
-                    connect(config, existingConnection != null ? existingConnection.id : selectedConnectionId);
-                })
-                .setNeutralButton(R.string.cancel_action, null)
-                .setPositiveButton(R.string.save_and_connect_action, (confirmDialog, which) -> {
-                    SavedConnection savedConnection = upsertSavedConnection(
-                        config,
-                        valueOf(labelInput.getText()),
-                        existingConnection != null ? existingConnection.id : null,
-                        true
-                    );
-                    dialog.dismiss();
-                    connect(savedConnection);
-                })
-                .show();
+            SavedConnection savedConnection = upsertSavedConnection(
+                config,
+                valueOf(labelInput.getText()),
+                existingConnection != null ? existingConnection.id : null,
+                false
+            );
+            dialog.dismiss();
+            connect(savedConnection);
         });
         dialog.show();
     }
@@ -1874,7 +1863,6 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
 
     private void restoreSavedConnections() {
         loadSavedConnections();
-        migrateLegacyConnectionDraftIfNeeded();
 
         SavedConnection selectedConnection = findSavedConnectionById(preferences.getString(KEY_SELECTED_CONNECTION_ID, null));
         if (selectedConnection == null && !savedConnections.isEmpty()) {
@@ -1895,71 +1883,20 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
         savedConnections.clear();
         String savedConnectionsJson = preferences.getString(KEY_SAVED_CONNECTIONS, "[]");
         if (TextUtils.isEmpty(savedConnectionsJson) || "[]".equals(savedConnectionsJson)) {
-            migrateLegacyConnectionDraftIfNeeded();
             return;
         }
 
         try {
             JSONArray jsonArray = new JSONArray(savedConnectionsJson);
-            boolean cleanedMock = false;
             for (int i = 0; i < jsonArray.length(); i++) {
                 JSONObject jsonObject = jsonArray.optJSONObject(i);
                 SavedConnection savedConnection = SavedConnection.fromJson(jsonObject);
                 if (savedConnection != null) {
-                    // Filter out legacy hardcoded sample connections
-                    if ("huangsheng".equals(savedConnection.username)
-                            || "HP Home Server".equals(savedConnection.label)
-                            || "Aliyun Prod Gateway".equals(savedConnection.label)
-                            || "Mac Studio M2".equals(savedConnection.label)
-                            || "192.168.5.115".equals(savedConnection.host)
-                            || "192.168.5.88".equals(savedConnection.host)
-                            || "47.98.120.45".equals(savedConnection.host)) {
-                        cleanedMock = true;
-                        continue;
-                    }
                     savedConnections.add(savedConnection);
                 }
             }
-            if (cleanedMock) {
-                if (savedConnections.isEmpty()) {
-                    selectedConnectionId = null;
-                }
-                persistSavedConnections();
-            }
         } catch (JSONException e) {
             Log.w(INPUT_LOG_TAG, "Failed to load saved connections", e);
-        }
-    }
-
-    private void migrateLegacyConnectionDraftIfNeeded() {
-        if (!savedConnections.isEmpty()) {
-            return;
-        }
-
-        String host = preferences.getString(KEY_HOST, "");
-        String username = preferences.getString(KEY_USERNAME, "");
-        String password = preferences.getString(KEY_PASSWORD, "");
-        String portValue = preferences.getString(KEY_PORT, "22");
-        if (!TextUtils.isEmpty(host) && !TextUtils.isEmpty(username)) {
-            int port = 22;
-            try {
-                port = Integer.parseInt(portValue);
-            } catch (NumberFormatException ignored) {
-            }
-
-            SavedConnection legacyConnection = new SavedConnection(
-                UUID.randomUUID().toString(),
-                host,
-                port,
-                username,
-                password,
-                "",
-                System.currentTimeMillis(),
-                false
-            );
-            savedConnections.add(legacyConnection);
-            selectedConnectionId = legacyConnection.id;
-            persistSavedConnections();
         }
     }
 
