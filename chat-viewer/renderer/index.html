@@ -13,6 +13,9 @@
       <div class="sidebar-header">
         <h1 class="app-title">Chat Viewer</h1>
         <div class="sidebar-actions">
+          <button id="btnToggleAllProjectsHeader" class="icon-btn" title="一键折叠/展开所有项目 (Alt+C)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16M4 16h16M10 5l2-2 2 2M10 19l2 2 2-2"/></svg>
+          </button>
           <button id="btnTheme" class="icon-btn" title="切换主题">
             <svg class="icon-sun" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
             <svg class="icon-moon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -27,13 +30,23 @@
       </div>
 
       <div class="sidebar-search">
-        <input type="text" id="searchInput" placeholder="搜索对话...">
+        <input type="text" id="searchInput" placeholder="搜索对话... (Cmd+Shift+F)">
       </div>
 
       <div class="source-tabs">
         <button class="source-tab active" data-source="all">全部</button>
         <button class="source-tab" data-source="cc">Claude Code</button>
         <button class="source-tab" data-source="codex">Codex</button>
+      </div>
+
+      <div class="projects-toolbar">
+        <span class="projects-count" id="projectCount">0 个项目</span>
+        <button id="btnToggleAllProjects" class="projects-toggle-btn" title="一键全部折叠或展开所有项目">
+          <svg class="icon-toggle-projects" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 8h16M4 16h16M10 5l2-2 2 2M10 19l2 2 2-2"/>
+          </svg>
+          <span class="toggle-text">折叠全部</span>
+        </button>
       </div>
 
       <div class="conversation-list" id="conversationList">
@@ -76,8 +89,12 @@
           <button class="filter-btn" data-filter="assistant">助手</button>
           <button class="filter-btn" data-filter="tool">工具</button>
           <button class="filter-btn" data-filter="system">系统</button>
+          <button id="btnToggleAllTools" class="filter-toggle-btn" title="一键全部展开或折叠工具调用">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 6 12 11 17 6"/></svg>
+            <span>展开全部工具</span>
+          </button>
           <div class="viewer-search">
-            <input type="text" id="viewerSearch" placeholder="搜索消息内容...">
+            <input type="text" id="viewerSearch" placeholder="搜索消息内容... (Cmd+F)">
           </div>
         </div>
 
