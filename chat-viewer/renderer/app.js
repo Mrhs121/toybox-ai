@@ -21,43 +21,157 @@ const viewerSearch = document.getElementById('viewerSearch');
 const settingsModal = document.getElementById('settingsModal');
 const convCount = document.getElementById('convCount');
 
-// Simple markdown renderer (no external dependency)
+// Lightweight syntax highlighter for code blocks
+function highlightCode(code, lang) {
+  if (!code) return '';
+  const escaped = escapeHtml(code);
+  if (!lang) return escaped;
+  const l = lang.toLowerCase();
+
+  const supported = ['js', 'javascript', 'ts', 'typescript', 'json', 'py', 'python', 'sh', 'bash', 'zsh', 'html', 'css', 'sql', 'yaml', 'yml'];
+  if (!supported.includes(l)) return escaped;
+
+  const placeholders = [];
+  const mask = (val, cls) => {
+    const idx = placeholders.length;
+    placeholders.push(`<span class="${cls}">${val}</span>`);
+    return `\x00MASK_${idx}\x00`;
+  };
+
+  let text = escaped;
+
+  // 1. Comments
+  if (['py', 'python', 'sh', 'bash', 'zsh', 'yaml', 'yml'].includes(l)) {
+    text = text.replace(/(#[^\n]*)/g, m => mask(m, 'token-comment'));
+  } else {
+    text = text.replace(/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, m => mask(m, 'token-comment'));
+  }
+
+  // 2. Strings
+  text = text.replace(/(&quot;.*?&quot;|&#39;.*?&#39;|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|`(?:\\.|[^`\\])*`)/g, m => mask(m, 'token-string'));
+
+  // 3. Keywords
+  const kwRegex = /\b(const|let|var|function|return|if|else|for|while|import|export|from|class|extends|async|await|try|catch|finally|throw|new|typeof|def|self|in|is|elif|lambda|pass|print|echo|local|select|where|insert|update|delete|table)\b/g;
+  text = text.replace(kwRegex, '<span class="token-keyword">$1</span>');
+
+  // 4. Booleans / Null
+  text = text.replace(/\b(true|false|null|undefined|True|False|None)\b/g, '<span class="token-boolean">$1</span>');
+
+  // 5. Numbers
+  text = text.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="token-number">$1</span>');
+
+  // Restore placeholders
+  text = text.replace(/\x00MASK_(\d+)\x00/g, (_, i) => placeholders[+i]);
+
+  return text;
+}
+
+// Enhanced markdown renderer (supports code blocks with copy & syntax, tables, quotes, strikethrough, lists)
 function renderMarkdown(text) {
   if (!text) return '';
-  let html = escapeHtml(text);
 
-  // Code blocks
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    return `<pre><code>${code}</code></pre>`;
+  const codeBlocks = [];
+  // 1. Extract fenced code blocks first to protect code content from being altered by markdown rules
+  let s = text.replace(/```([a-zA-Z0-9_+-]*)\r?\n([\s\S]*?)```/g, (_, lang, code) => {
+    const placeholder = `\x00CODEBLOCK_${codeBlocks.length}\x00`;
+    codeBlocks.push({ lang: (lang || '').trim(), code });
+    return placeholder;
   });
 
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  // 2. Extract inline code
+  const inlineCodes = [];
+  s = s.replace(/`([^`\n]+)`/g, (_, code) => {
+    const placeholder = `\x00INLINECODE_${inlineCodes.length}\x00`;
+    inlineCodes.push(code);
+    return placeholder;
+  });
 
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // 3. Escape HTML for the rest of markdown text
+  s = escapeHtml(s);
 
-  // Italic
-  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+  // 4. Tables (GFM syntax)
+  s = s.replace(/^(\|([^\n]+)\|[ \t]*\r?\n)(\|[-:|\s]+?\|[ \t]*\r?\n)((?:\|[^\n]+\|[ \t]*(?:\r?\n|$))+)/gm, (match, headerLine, _hc, alignLine, bodyLines) => {
+    const parseCells = (row) => row.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+    const headers = parseCells(headerLine);
+    const ths = headers.map(h => `<th>${h}</th>`).join('');
+    const bodyRows = bodyLines.trim().split('\n').filter(Boolean);
+    const trs = bodyRows.map(row => {
+      const cells = parseCells(row);
+      return `<tr>` + cells.map(c => `<td>${c}</td>`).join('') + `</tr>`;
+    }).join('');
+    return `<div class="table-wrapper"><table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table></div>`;
+  });
 
-  // Headers
-  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  // 5. Blockquotes (escaped > is &gt;)
+  s = s.replace(/^(?:&gt;\s?([^\n]+)\r?\n?)+/gm, (match) => {
+    const inner = match.split('\n').filter(Boolean).map(line => line.replace(/^&gt;\s?/, '')).join('<br>');
+    return `<blockquote>${inner}</blockquote>`;
+  });
 
-  // Lists
-  html = html.replace(/^(\s*)[-*] (.+)$/gm, '$1<li>$2</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  // 6. Horizontal Rules
+  s = s.replace(/^(?:---|\*\*\*|___)\s*$/gm, '<hr>');
 
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+  // 7. Strikethrough
+  s = s.replace(/~~(.+?)~~/g, '<del>$1</del>');
 
-  // Line breaks
-  html = html.replace(/\n/g, '<br>');
+  // 8. Bold & Italic
+  s = s.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
-  return html;
+  // 9. Headers
+  s = s.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  s = s.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  s = s.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  s = s.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+  // 10. Lists
+  s = s.replace(/^(\s*)[-*+] (.+)$/gm, '$1<li>$2</li>');
+  s = s.replace(/^(\s*)(\d+)\. (.+)$/gm, '$1<li>$3</li>');
+  s = s.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+  // 11. Links
+  s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+  // 12. Convert newlines to <br> for plain markdown paragraphs
+  s = s.replace(/\n/g, '<br>');
+
+  // 13. Reinsert inline code
+  s = s.replace(/\x00INLINECODE_(\d+)\x00/g, (_, idx) => {
+    const code = inlineCodes[+idx] || '';
+    return `<code class="inline-code">${escapeHtml(code)}</code>`;
+  });
+
+  // 14. Reinsert fenced code blocks with language tag, syntax highlighting, and copy button
+  s = s.replace(/\x00CODEBLOCK_(\d+)\x00/g, (_, idx) => {
+    const item = codeBlocks[+idx] || { lang: '', code: '' };
+    const lang = item.lang;
+    const langLabel = lang ? `<span class="code-lang">${escapeHtml(lang)}</span>` : '<span class="code-lang">TEXT</span>';
+    const langAttr = lang ? ` data-lang="${escapeHtml(lang)}"` : '';
+    const highlighted = highlightCode(item.code, lang);
+    return `<div class="code-block-wrapper">` +
+      `<div class="code-block-header">${langLabel}<button class="copy-code-btn" onclick="copyCode(this)" title="复制代码"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> <span>复制</span></button></div>` +
+      `<pre${langAttr}><code class="language-${lang || 'text'}">${highlighted}</code></pre></div>`;
+  });
+
+  return s;
 }
+
+window.copyCode = function(btn) {
+  const wrapper = btn.closest('.code-block-wrapper');
+  const codeEl = wrapper ? wrapper.querySelector('code') : null;
+  if (!codeEl) return;
+  const rawText = codeEl.textContent || '';
+  navigator.clipboard.writeText(rawText).then(() => {
+    const span = btn.querySelector('span');
+    if (span) span.textContent = '已复制';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      if (span) span.textContent = '复制';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+};
 
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -145,8 +259,19 @@ function renderConversationList() {
     return bVal.length - aVal.length;
   });
 
+  window._currentSortedGroups = sortedGroups;
+
+  // Update projects count
+  const projectCount = document.getElementById('projectCount');
+  if (projectCount) {
+    projectCount.textContent = `${sortedGroups.length} 个项目`;
+  }
+
   // Track collapsed groups
   if (!window._collapsedGroups) window._collapsedGroups = new Set();
+
+  const allCollapsed = sortedGroups.length > 0 && sortedGroups.every(([proj]) => window._collapsedGroups.has(proj));
+  updateProjectsToggleButtons(allCollapsed);
 
   let html = '';
   for (const [project, convs] of sortedGroups) {
@@ -198,8 +323,36 @@ function renderConversationList() {
         items.style.display = 'none';
         arrow.classList.add('collapsed');
       }
+      const isAllCollapsed = window._currentSortedGroups.length > 0 && window._currentSortedGroups.every(([proj]) => window._collapsedGroups.has(proj));
+      updateProjectsToggleButtons(isAllCollapsed);
     });
   });
+}
+
+function updateProjectsToggleButtons(allCollapsed) {
+  const btn = document.getElementById('btnToggleAllProjects');
+  if (btn) {
+    const text = btn.querySelector('.toggle-text');
+    if (text) text.textContent = allCollapsed ? '展开全部' : '折叠全部';
+    btn.setAttribute('title', allCollapsed ? '一键展开所有项目 (Alt+C)' : '一键折叠所有项目 (Alt+C)');
+    btn.classList.toggle('active', allCollapsed);
+  }
+  const headerBtn = document.getElementById('btnToggleAllProjectsHeader');
+  if (headerBtn) {
+    headerBtn.setAttribute('title', allCollapsed ? '一键展开所有项目 (Alt+C)' : '一键折叠所有项目 (Alt+C)');
+    headerBtn.classList.toggle('active', allCollapsed);
+  }
+}
+
+function toggleAllProjects() {
+  if (!window._currentSortedGroups || !window._currentSortedGroups.length) return;
+  const allCollapsed = window._currentSortedGroups.every(([proj]) => window._collapsedGroups.has(proj));
+  if (allCollapsed) {
+    window._collapsedGroups.clear();
+  } else {
+    window._currentSortedGroups.forEach(([proj]) => window._collapsedGroups.add(proj));
+  }
+  renderConversationList();
 }
 
 // path.basename polyfill for renderer
@@ -285,18 +438,125 @@ function setupEventListeners() {
     if (currentConversation) window.api.openInFinder(currentConversation.filePath);
   });
 
+  // Toggle all tools button
+  const btnToggleAllTools = document.getElementById('btnToggleAllTools');
+  if (btnToggleAllTools) {
+    btnToggleAllTools.addEventListener('click', toggleAllTools);
+  }
+
+  // Toggle all projects buttons
+  const btnToggleAllProjects = document.getElementById('btnToggleAllProjects');
+  if (btnToggleAllProjects) {
+    btnToggleAllProjects.addEventListener('click', toggleAllProjects);
+  }
+  const btnToggleAllProjectsHeader = document.getElementById('btnToggleAllProjectsHeader');
+  if (btnToggleAllProjectsHeader) {
+    btnToggleAllProjectsHeader.addEventListener('click', toggleAllProjects);
+  }
+
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'f') {
+    const isEditing = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+
+    // Alt+C / Option+C: Toggle all projects collapse/expand
+    if (e.altKey && (e.key === 'c' || e.key === 'C' || e.code === 'KeyC')) {
+      e.preventDefault();
+      toggleAllProjects();
+      return;
+    }
+
+    // Cmd+F / Ctrl+F: Focus viewer search (or if viewer not open, focus sidebar search)
+    if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+      e.preventDefault();
+      if (e.shiftKey) {
+        searchInput.focus();
+        searchInput.select();
+      } else if (viewer.style.display !== 'none') {
+        viewerSearch.focus();
+        viewerSearch.select();
+      } else {
+        searchInput.focus();
+        searchInput.select();
+      }
+      return;
+    }
+
+    // Slash '/' outside input focuses viewer search
+    if (!isEditing && e.key === '/') {
       if (viewer.style.display !== 'none') {
         e.preventDefault();
         viewerSearch.focus();
+        viewerSearch.select();
+        return;
       }
     }
+
+    // Escape: Close modal or blur search
     if (e.key === 'Escape') {
-      if (settingsModal.style.display !== 'none') closeSettings();
+      if (settingsModal.style.display !== 'none') {
+        closeSettings();
+        return;
+      }
+      if (isEditing) {
+        document.activeElement.blur();
+        return;
+      }
+    }
+
+    // Up / Down / j / k to navigate conversation list when not editing
+    if (!isEditing && (e.key === 'ArrowDown' || e.key === 'j' || e.key === 'ArrowUp' || e.key === 'k')) {
+      const items = Array.from(conversationList.querySelectorAll('.conv-item'));
+      if (!items.length) return;
+      e.preventDefault();
+      const currentIndex = items.findIndex(item => item.classList.contains('active'));
+      let nextIndex = 0;
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+      } else {
+        nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+      }
+      const nextItem = items[nextIndex];
+      if (nextItem) {
+        nextItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        const convId = nextItem.dataset.id;
+        const convSource = nextItem.dataset.source;
+        const conv = conversations.find(c => c.id === convId && c.source === convSource);
+        if (conv) loadConversation(conv);
+      }
     }
   });
+}
+
+let allToolsExpanded = false;
+function toggleAllTools() {
+  const groups = document.querySelectorAll('.message-group');
+  if (!groups.length) return;
+  allToolsExpanded = !allToolsExpanded;
+  groups.forEach(group => {
+    const items = group.querySelector('.message-group-items');
+    const arrow = group.querySelector('.message-group-header .compact-arrow');
+    if (allToolsExpanded) {
+      items?.classList.remove('compact-hidden');
+      arrow?.classList.add('rotated');
+      group.querySelectorAll('.group-item').forEach(item => {
+        item.querySelector('.group-item-content')?.classList.remove('compact-hidden');
+        item.querySelector('.compact-arrow')?.classList.add('rotated');
+      });
+    } else {
+      items?.classList.add('compact-hidden');
+      arrow?.classList.remove('rotated');
+      group.querySelectorAll('.group-item').forEach(item => {
+        item.querySelector('.group-item-content')?.classList.add('compact-hidden');
+        item.querySelector('.compact-arrow')?.classList.remove('rotated');
+      });
+    }
+  });
+  const btn = document.getElementById('btnToggleAllTools');
+  if (btn) {
+    const span = btn.querySelector('span');
+    if (span) span.textContent = allToolsExpanded ? '折叠全部工具' : '展开全部工具';
+    btn.classList.toggle('active', allToolsExpanded);
+  }
 }
 
 async function loadConversation(conv) {
@@ -305,6 +565,13 @@ async function loadConversation(conv) {
   sessionMeta = null;
   currentFilter = 'all';
   viewerSearchQuery = '';
+  allToolsExpanded = false;
+  const toggleBtn = document.getElementById('btnToggleAllTools');
+  if (toggleBtn) {
+    const span = toggleBtn.querySelector('span');
+    if (span) span.textContent = '展开全部工具';
+    toggleBtn.classList.remove('active');
+  }
 
   // Update active state
   document.querySelectorAll('.conv-item').forEach(item => {
@@ -422,15 +689,55 @@ function ingestCCMessage(record, stats) {
       return;
     }
 
+    if (block.type === 'thinking') {
+      const text = (block.thinking || '').trim();
+      if (!text) return;
+      allMessages.push({
+        role: 'assistant',
+        kind: 'thinking',
+        kindLabel: '思考过程',
+        timestamp,
+        plainText: text,
+        searchableText: text,
+        html: `<div class="thinking-block">
+                 <div class="thinking-header" onclick="toggleThinking(this)">
+                   <svg class="thinking-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z"/><path d="M9 21h6"/></svg>
+                   <span class="thinking-title">思考过程 (Thinking)</span>
+                   <span class="thinking-badge">${text.length} 字符</span>
+                   <svg class="compact-arrow" width="10" height="10" viewBox="0 0 10 10"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                 </div>
+                 <div class="thinking-content compact-hidden">${renderMarkdown(text)}</div>
+               </div>`
+      });
+      return;
+    }
+
+    if (block.type === 'redacted_thinking') {
+      allMessages.push({
+        role: 'assistant',
+        kind: 'thinking',
+        kindLabel: '思考过程 (已省略)',
+        timestamp,
+        plainText: '[思考过程已被模型提供方省略]',
+        searchableText: '思考过程 已省略',
+        html: `<div class="thinking-block redacted">
+                 <div class="thinking-header disabled">
+                   <span class="thinking-title">思考过程 (已由提供方省略)</span>
+                 </div>
+               </div>`
+      });
+      return;
+    }
+
     if (block.type === 'tool_use') {
       const input = JSON.stringify(block.input || {}, null, 2);
       const plainText = `Tool: ${block.name}\nID: ${block.id}\n\n${input}`;
       allMessages.push({
-        role: 'tool', kind: 'tool_use', kindLabel: 'tool use', timestamp,
+        role: 'tool', kind: 'tool_use', kindLabel: `tool: ${block.name || 'call'}`, timestamp,
         plainText, searchableText: `${block.name} ${input}`,
-        html: `<div class="tool-title">Tool: ${escapeHtml(block.name || 'unknown')}</div>
+        html: `<div class="tool-title"><span class="tool-badge">Tool</span> <strong>${escapeHtml(block.name || 'unknown')}</strong></div>
                <div class="kv-grid"><div class="kv-key">id</div><div class="kv-value">${escapeHtml(block.id || '')}</div></div>
-               <pre><code>${escapeHtml(input)}</code></pre>`
+               <div class="code-block-wrapper"><div class="code-block-header"><span class="code-lang">JSON</span><button class="copy-code-btn" onclick="copyCode(this)" title="复制代码"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> <span>复制</span></button></div><pre data-lang="json"><code class="language-json">${highlightCode(input, 'json')}</code></pre></div>`
       });
       stats.tool++;
       return;
@@ -441,9 +748,8 @@ function ingestCCMessage(record, stats) {
       allMessages.push({
         role: 'tool', kind: 'tool_result', kindLabel: 'tool result', timestamp,
         plainText: resultText, searchableText: `${block.tool_use_id} ${resultText}`,
-        html: `<div class="tool-title">Tool Result</div>
-               <div class="kv-grid"><div class="kv-key">id</div><div class="kv-value">${escapeHtml(block.tool_use_id || '')}</div></div>
-               <pre><code>${escapeHtml(resultText)}</code></pre>`
+        html: `<div class="tool-title"><span class="tool-badge">Result</span> <strong>${escapeHtml(block.tool_use_id || '')}</strong></div>
+               <div class="code-block-wrapper"><div class="code-block-header"><span class="code-lang">OUTPUT</span><button class="copy-code-btn" onclick="copyCode(this)" title="复制输出"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> <span>复制</span></button></div><pre><code>${escapeHtml(resultText)}</code></pre></div>`
       });
       stats.tool++;
     }
@@ -464,7 +770,7 @@ function buildMsg(role, kind, text, timestamp) {
 // --- Codex JSONL Parser ---
 function parseCodexJSONL(content) {
   const lines = content.trim().split('\n');
-  const stats = { user: 0, assistant: 0, totalTokens: 0 };
+  const stats = { user: 0, assistant: 0, tool: 0, totalTokens: 0 };
 
   lines.forEach((line, index) => {
     try {
@@ -478,24 +784,26 @@ function parseCodexJSONL(content) {
         const contentArr = payload.content || [];
         if (!contentArr.length) return;
 
-        const text = contentArr[0].text || '';
-        if (!text) return;
+        contentArr.forEach(item => {
+          const text = item.text || '';
+          if (!text) return;
 
-        // Skip system/context messages
-        if (role === 'developer' && (text.startsWith('<permissions') || text.startsWith('<app-context>') || text.startsWith('<collaboration_mode>'))) return;
-        if (role === 'user' && (text.startsWith('<environment_context>') || text.startsWith('# AGENTS.md'))) return;
+          // Skip system/context messages
+          if (role === 'developer' && (text.startsWith('<permissions') || text.startsWith('<app-context>') || text.startsWith('<collaboration_mode>'))) return;
+          if (role === 'user' && (text.startsWith('<environment_context>') || text.startsWith('# AGENTS.md'))) return;
 
-        if (role === 'user') {
-          const isReal = !text.startsWith('<') && !text.startsWith('# AGENTS') && text.length > 0;
-          if (!isReal) return;
-          allMessages.push({ role: 'user', kind: 'message', timestamp, plainText: text, searchableText: text, html: renderMarkdown(text) });
-          stats.user++;
-        } else if (role === 'assistant') {
-          allMessages.push({ role: 'assistant', kind: 'message', timestamp, plainText: text, searchableText: text, html: renderMarkdown(text) });
-          stats.assistant++;
-        } else if (role === 'developer' && !text.startsWith('<')) {
-          allMessages.push({ role: 'system', kind: 'developer', timestamp, plainText: text, searchableText: text, html: renderMarkdown(text) });
-        }
+          if (role === 'user') {
+            const isReal = !text.startsWith('<') && !text.startsWith('# AGENTS') && text.length > 0;
+            if (!isReal) return;
+            allMessages.push({ role: 'user', kind: 'message', timestamp, plainText: text, searchableText: text, html: renderMarkdown(text) });
+            stats.user++;
+          } else if (role === 'assistant') {
+            allMessages.push({ role: 'assistant', kind: 'message', timestamp, plainText: text, searchableText: text, html: renderMarkdown(text) });
+            stats.assistant++;
+          } else if (role === 'developer' && !text.startsWith('<')) {
+            allMessages.push({ role: 'system', kind: 'developer', timestamp, plainText: text, searchableText: text, html: renderMarkdown(text) });
+          }
+        });
       } else if (type === 'event_msg') {
         if (payload.type === 'token_count') {
           stats.totalTokens += payload.input_tokens || 0;
@@ -545,16 +853,16 @@ function renderMessages() {
     return;
   }
 
-  // Group consecutive tool/system messages
+  // Group consecutive tool/system/attachment messages
   const groups = [];
   let i = 0;
   while (i < filtered.length) {
     const msg = filtered[i];
-    const isCompact = msg.role === 'tool' || msg.role === 'system';
+    const isCompact = msg.role === 'tool' || msg.role === 'system' || msg.role === 'attachment';
 
     if (isCompact) {
       const batch = [];
-      while (i < filtered.length && (filtered[i].role === 'tool' || filtered[i].role === 'system')) {
+      while (i < filtered.length && (filtered[i].role === 'tool' || filtered[i].role === 'system' || filtered[i].role === 'attachment')) {
         batch.push(filtered[i]);
         i++;
       }
@@ -576,8 +884,11 @@ function renderMessages() {
         <div class="message ${msg.role}">
           <div class="message-header">
             <span class="message-role ${msg.role}">${roleLabel[msg.role] || msg.role}</span>
-            ${msg.kind && msg.kind !== 'message' ? `<span class="message-kind">${escapeHtml(msg.kind)}</span>` : ''}
+            ${msg.kind && msg.kind !== 'message' ? `<span class="message-kind">${escapeHtml(msg.kindLabel || msg.kind)}</span>` : ''}
             ${time ? `<span class="message-time">${time}</span>` : ''}
+            <button class="msg-copy-btn" onclick="copyMessageText(this)" title="复制消息全文">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            </button>
           </div>
           <div class="message-content ${needsCollapse ? 'collapsed' : ''}">
             ${msg.html}
@@ -586,7 +897,7 @@ function renderMessages() {
         </div>`;
     }
 
-    // Group of consecutive tool/system messages
+    // Group of consecutive tool/system/attachment messages
     const msgs = group.messages;
     const firstTime = msgs[0].timestamp ? new Date(msgs[0].timestamp).toLocaleString('zh-CN') : '';
     const lastTime = msgs[msgs.length - 1].timestamp ? new Date(msgs[msgs.length - 1].timestamp).toLocaleString('zh-CN') : '';
@@ -606,7 +917,7 @@ function renderMessages() {
         <div class="group-item">
           <div class="group-item-header" onclick="toggleGroupItem(this)">
             <span class="message-role ${msg.role}">${roleLabel[msg.role] || msg.role}</span>
-            ${msg.kind && msg.kind !== 'message' ? `<span class="message-kind">${escapeHtml(msg.kind)}</span>` : ''}
+            ${msg.kind && msg.kind !== 'message' ? `<span class="message-kind">${escapeHtml(msg.kindLabel || msg.kind)}</span>` : ''}
             ${t ? `<span class="message-time">${t}</span>` : ''}
             <svg class="compact-arrow" width="10" height="10" viewBox="0 0 10 10"><path d="M3 1l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
           </div>
@@ -627,6 +938,45 @@ function renderMessages() {
         </div>
       </div>`;
   }).join('');
+
+  if (sq) {
+    highlightSearchKeywords(messagesContainer, viewerSearchQuery);
+  }
+}
+
+function highlightSearchKeywords(container, query) {
+  if (!query || !query.trim()) return;
+  const q = query.trim();
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+  const nodesToReplace = [];
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode;
+    if (node.parentElement && ['SCRIPT', 'STYLE', 'BUTTON'].includes(node.parentElement.tagName)) continue;
+    if (node.parentElement && node.parentElement.closest('.search-highlight')) continue;
+    if (node.nodeValue && node.nodeValue.toLowerCase().includes(q.toLowerCase())) {
+      nodesToReplace.push(node);
+    }
+  }
+
+  const regex = new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  nodesToReplace.forEach(node => {
+    const parent = node.parentNode;
+    if (!parent) return;
+    const frag = document.createDocumentFragment();
+    const parts = node.nodeValue.split(regex);
+    parts.forEach(part => {
+      if (part.toLowerCase() === q.toLowerCase()) {
+        const mark = document.createElement('mark');
+        mark.className = 'search-highlight';
+        mark.textContent = part;
+        frag.appendChild(mark);
+      } else if (part) {
+        frag.appendChild(document.createTextNode(part));
+      }
+    });
+    parent.replaceChild(frag, node);
+  });
 }
 
 window.expandMsg = function(btn) {
@@ -648,6 +998,15 @@ window.toggleGroupItem = function(header) {
   const arrow = header.querySelector('.compact-arrow');
   content.classList.toggle('compact-hidden');
   arrow.classList.toggle('rotated');
+};
+
+window.toggleThinking = function(header) {
+  const container = header.closest('.thinking-block');
+  if (!container || container.classList.contains('redacted')) return;
+  const content = container.querySelector('.thinking-content');
+  const arrow = header.querySelector('.compact-arrow');
+  content?.classList.toggle('compact-hidden');
+  arrow?.classList.toggle('rotated');
 };
 
 // --- Settings ---
@@ -752,6 +1111,23 @@ function downloadFile(content, filename, mimeType) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+window.copyMessageText = function(btn) {
+  const msgEl = btn.closest('.message');
+  if (!msgEl) return;
+  const contentEl = msgEl.querySelector('.message-content');
+  if (!contentEl) return;
+  const text = contentEl.innerText || '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.classList.add('copied');
+    const origTitle = btn.getAttribute('title') || '';
+    btn.setAttribute('title', '已复制');
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.setAttribute('title', origTitle);
+    }, 2000);
+  });
+};
 
 // Start
 init();

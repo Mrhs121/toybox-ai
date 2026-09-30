@@ -19,16 +19,18 @@ function loadSettings() {
   }
 }
 
-function saveSettings(settings) {
-  fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+async function saveSettings(settings) {
+  try {
+    await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(settings, null, 2));
+  } catch {}
 }
 
-function readSessionMeta(filePath) {
+async function readSessionMeta(filePath) {
+  let fileHandle = null;
   try {
-    const fd = fs.openSync(filePath, 'r');
+    fileHandle = await fs.promises.open(filePath, 'r');
     const buf = Buffer.alloc(65536);
-    const bytesRead = fs.readSync(fd, buf, 0, 65536, 0);
-    fs.closeSync(fd);
+    const { bytesRead } = await fileHandle.read(buf, 0, 65536, 0);
     const chunk = buf.toString('utf-8', 0, bytesRead);
     // Find session_meta with cwd without parsing the full (potentially huge) line
     const cwdMatch = chunk.match(/"type"\s*:\s*"session_meta".*?"cwd"\s*:\s*"([^"]+)"/);
@@ -36,18 +38,27 @@ function readSessionMeta(filePath) {
     return null;
   } catch {
     return null;
+  } finally {
+    if (fileHandle) {
+      try { await fileHandle.close(); } catch {}
+    }
   }
 }
 
-function scanDirectory(dirPath, source) {
+async function scanDirectory(dirPath, source) {
   const results = [];
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true, recursive: true });
+    try {
+      await fs.promises.access(dirPath);
+    } catch {
+      return results;
+    }
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true, recursive: true });
     for (const entry of entries) {
       if (entry.isFile() && entry.name.endsWith('.jsonl')) {
         const fullPath = path.join(entry.parentPath || entry.path, entry.name);
         try {
-          const stat = fs.statSync(fullPath);
+          const stat = await fs.promises.stat(fullPath);
           const sessionId = entry.name.replace('.jsonl', '');
           const parentDir = path.basename(entry.parentPath || entry.path);
 
@@ -60,7 +71,7 @@ function scanDirectory(dirPath, source) {
             project = parts[parts.length - 1] || title;
           } else {
             // Codex: read session_meta.cwd from file header
-            const cwd = readSessionMeta(fullPath);
+            const cwd = await readSessionMeta(fullPath);
             if (cwd) {
               title = cwd.replace(/^\/Users\/[^/]+/, '~');
               const parts = title.split('/').filter(Boolean);
@@ -93,21 +104,21 @@ function scanDirectory(dirPath, source) {
   return results;
 }
 
-function scanAllConversations(settings) {
+async function scanAllConversations(settings) {
   let all = [];
   for (const p of settings.ccPaths || []) {
-    all = all.concat(scanDirectory(p, 'cc'));
+    all = all.concat(await scanDirectory(p, 'cc'));
   }
   for (const p of settings.codexPaths || []) {
-    all = all.concat(scanDirectory(p, 'codex'));
+    all = all.concat(await scanDirectory(p, 'codex'));
   }
   all.sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
   return all;
 }
 
-function readFileHead(filePath, lines = 3) {
+async function readFileHead(filePath, lines = 3) {
   try {
-    const content = fs.readFileSync(filePath, 'utf-8');
+    const content = await fs.promises.readFile(filePath, 'utf-8');
     const firstLines = content.split('\n').filter(Boolean).slice(0, lines);
     return firstLines.map(l => {
       try { return JSON.parse(l); } catch { return null; }
@@ -117,9 +128,9 @@ function readFileHead(filePath, lines = 3) {
   }
 }
 
-function readFullFile(filePath) {
+async function readFullFile(filePath) {
   try {
-    return fs.readFileSync(filePath, 'utf-8');
+    return await fs.promises.readFile(filePath, 'utf-8');
   } catch {
     return '';
   }
@@ -158,22 +169,22 @@ app.on('activate', () => {
 // IPC Handlers
 ipcMain.handle('get-settings', () => loadSettings());
 
-ipcMain.handle('save-settings', (_, settings) => {
-  saveSettings(settings);
+ipcMain.handle('save-settings', async (_, settings) => {
+  await saveSettings(settings);
   return true;
 });
 
-ipcMain.handle('scan-conversations', () => {
+ipcMain.handle('scan-conversations', async () => {
   const settings = loadSettings();
-  return scanAllConversations(settings);
+  return await scanAllConversations(settings);
 });
 
-ipcMain.handle('read-conversation', (_, filePath) => {
-  return readFullFile(filePath);
+ipcMain.handle('read-conversation', async (_, filePath) => {
+  return await readFullFile(filePath);
 });
 
-ipcMain.handle('read-conversation-head', (_, filePath) => {
-  return readFileHead(filePath);
+ipcMain.handle('read-conversation-head', async (_, filePath) => {
+  return await readFileHead(filePath);
 });
 
 ipcMain.handle('pick-directory', async () => {
