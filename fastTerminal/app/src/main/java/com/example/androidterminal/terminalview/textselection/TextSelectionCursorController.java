@@ -3,6 +3,8 @@ package com.example.androidterminal.terminalview.textselection;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.graphics.Rect;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.TextUtils;
 import android.view.ActionMode;
 import android.view.Menu;
@@ -33,6 +35,27 @@ public class TextSelectionCursorController implements CursorController {
     private final int ACTION_PASTE = 2;
     private final int ACTION_MORE = 3;
 
+    private static final int AUTO_SCROLL_EDGE_PX = 48;
+    private static final long AUTO_SCROLL_INTERVAL_MS = 60L;
+    private final Handler mAutoScrollHandler = new Handler(Looper.getMainLooper());
+    private boolean mAutoScrollRunning = false;
+    private int mAutoScrollDeltaRows = 0;
+    private float mLastMouseX = -1f;
+    private float mLastMouseY = -1f;
+
+    private final Runnable mAutoScrollRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!mIsSelectingText || !mMouseSelectionActive || mAutoScrollDeltaRows == 0 || terminalView.mEmulator == null) {
+                stopAutoScroll();
+                return;
+            }
+            terminalView.scrollSelectionBy(mAutoScrollDeltaRows);
+            applyMouseSelectionAt(mLastMouseX, mLastMouseY);
+            mAutoScrollHandler.postDelayed(this, AUTO_SCROLL_INTERVAL_MS);
+        }
+    };
+
     public TextSelectionCursorController(TerminalView terminalView) {
         this.terminalView = terminalView;
         mStartHandle = new TextSelectionHandleView(terminalView, this, TextSelectionHandleView.LEFT);
@@ -57,9 +80,10 @@ public class TextSelectionCursorController implements CursorController {
     }
 
     public void startMouseSelection(MotionEvent event) {
+        stopAutoScroll();
         int[] columnAndRow = terminalView.getColumnAndRow(event, true);
         mAnchorX = clampColumn(columnAndRow[0]);
-        mAnchorY = clampRow(columnAndRow[1]);
+        mAnchorY = clampSelectionRow(columnAndRow[1]);
         mSelX1 = mSelX2 = mAnchorX;
         mSelY1 = mSelY2 = mAnchorY;
         mShowSelectionHandles = false;
@@ -77,10 +101,52 @@ public class TextSelectionCursorController implements CursorController {
         if (!mMouseSelectionActive) {
             return;
         }
+        mLastMouseX = event.getX();
+        mLastMouseY = event.getY();
+        updateAutoScrollDirection(mLastMouseY);
+        applyMouseSelectionAt(mLastMouseX, mLastMouseY);
+    }
 
-        int[] columnAndRow = terminalView.getColumnAndRow(event, true);
-        int currentX = clampColumn(columnAndRow[0]);
-        int currentY = clampRow(columnAndRow[1]);
+    private void updateAutoScrollDirection(float y) {
+        int height = terminalView.getHeight();
+        if (height <= 0) {
+            stopAutoScroll();
+            return;
+        }
+
+        int delta = 0;
+        if (y < AUTO_SCROLL_EDGE_PX) {
+            delta = (y < AUTO_SCROLL_EDGE_PX / 2f) ? -2 : -1;
+        } else if (y > height - AUTO_SCROLL_EDGE_PX) {
+            delta = (y > height - AUTO_SCROLL_EDGE_PX / 2f) ? 2 : 1;
+        }
+
+        if (delta == 0) {
+            stopAutoScroll();
+            return;
+        }
+
+        mAutoScrollDeltaRows = delta;
+        if (!mAutoScrollRunning) {
+            mAutoScrollRunning = true;
+            mAutoScrollHandler.removeCallbacks(mAutoScrollRunnable);
+            mAutoScrollHandler.postDelayed(mAutoScrollRunnable, AUTO_SCROLL_INTERVAL_MS);
+        }
+    }
+
+    private void stopAutoScroll() {
+        mAutoScrollRunning = false;
+        mAutoScrollDeltaRows = 0;
+        mAutoScrollHandler.removeCallbacks(mAutoScrollRunnable);
+    }
+
+    private void applyMouseSelectionAt(float x, float y) {
+        if (terminalView.mEmulator == null || terminalView.mRenderer == null) {
+            return;
+        }
+
+        int currentX = clampColumn(terminalView.getCursorX(x));
+        int currentY = clampSelectionRow(terminalView.getCursorY(y));
         TerminalBuffer screen = terminalView.mEmulator.getScreen();
 
         currentX = getValidCurX(screen, currentY, currentX);
@@ -101,6 +167,7 @@ public class TextSelectionCursorController implements CursorController {
     }
 
     public void finishMouseSelection() {
+        stopAutoScroll();
         if (!mMouseSelectionActive) {
             return;
         }
@@ -120,11 +187,9 @@ public class TextSelectionCursorController implements CursorController {
     }
 
     public boolean hide(boolean force) {
+        stopAutoScroll();
         if (!isActive()) return false;
 
-        // prevent hide calls right after a show call, like long pressing the down key
-        // 300ms seems long enough that it wouldn't cause hide problems if action button
-        // is quickly clicked after the show, otherwise decrease it
         if (!force && System.currentTimeMillis() - mShowStartTime < 300) {
             return false;
         }
@@ -171,7 +236,6 @@ public class TextSelectionCursorController implements CursorController {
 
         TerminalBuffer screen = terminalView.mEmulator.getScreen();
         if (!" ".equals(screen.getSelectedText(mSelX1, mSelY1, mSelX1, mSelY1))) {
-            // Selecting something other than whitespace. Expand to word.
             while (mSelX1 > 0 && !"".equals(screen.getSelectedText(mSelX1 - 1, mSelY1, mSelX1 - 1, mSelY1))) {
                 mSelX1--;
             }
@@ -180,7 +244,7 @@ public class TextSelectionCursorController implements CursorController {
             }
         }
     }
-    
+
     public void setActionModeCallBacks() {
         final ActionMode.Callback callback = new ActionMode.Callback() {
             @Override
@@ -202,7 +266,6 @@ public class TextSelectionCursorController implements CursorController {
             @Override
             public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
                 if (!isActive()) {
-                    // Fix issue where the dialog is pressed while being dismissed.
                     return true;
                 }
 
@@ -217,7 +280,7 @@ public class TextSelectionCursorController implements CursorController {
                         terminalView.mTermSession.onPasteTextFromClipboard();
                         break;
                     case ACTION_MORE:
-                        terminalView.stopTextSelectionMode(); //we stop text selection first, otherwise handles will show above popup
+                        terminalView.stopTextSelectionMode();
                         terminalView.showContextMenu();
                         break;
                 }
@@ -233,7 +296,6 @@ public class TextSelectionCursorController implements CursorController {
                     terminalView.invalidate();
                 }
             }
-
         };
 
         mActionMode = terminalView.startActionMode(new ActionMode.Callback2() {
@@ -254,7 +316,6 @@ public class TextSelectionCursorController implements CursorController {
 
             @Override
             public void onDestroyActionMode(ActionMode mode) {
-                // Ignore.
             }
 
             @Override
@@ -263,7 +324,6 @@ public class TextSelectionCursorController implements CursorController {
                 int x2 = Math.round(mSelX2 * terminalView.mRenderer.getFontWidth());
                 int y1 = Math.round((mSelY1 - 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
                 int y2 = Math.round((mSelY2 + 1 - terminalView.getTopRow()) * terminalView.mRenderer.getFontLineSpacing());
-
 
                 if (x1 > x2) {
                     int tmp = x1;
@@ -289,10 +349,8 @@ public class TextSelectionCursorController implements CursorController {
 
             if (mSelY1 < -scrollRows) {
                 mSelY1 = -scrollRows;
-
             } else if (mSelY1 > terminalView.mEmulator.mRows - 1) {
                 mSelY1 = terminalView.mEmulator.mRows - 1;
-
             }
 
             if (mSelY1 > mSelY2) {
@@ -321,7 +379,6 @@ public class TextSelectionCursorController implements CursorController {
             }
 
             mSelX1 = getValidCurX(screen, mSelY1, mSelX1);
-
         } else {
             mSelX2 = terminalView.getCursorX(x);
             mSelY2 = terminalView.getCursorY(y);
@@ -414,6 +471,7 @@ public class TextSelectionCursorController implements CursorController {
 
     @Override
     public void onDetached() {
+        stopAutoScroll();
     }
 
     @Override
@@ -436,16 +494,10 @@ public class TextSelectionCursorController implements CursorController {
         return mActionMode;
     }
 
-    /**
-     * @return true if this controller is currently used to move the start selection.
-     */
     public boolean isSelectionStartDragged() {
         return mStartHandle.isDragging();
     }
 
-    /**
-     * @return true if this controller is currently used to move the end selection.
-     */
     public boolean isSelectionEndDragged() {
         return mEndHandle.isDragging();
     }
@@ -461,17 +513,18 @@ public class TextSelectionCursorController implements CursorController {
         return Math.min(column, terminalView.mEmulator.mColumns - 1);
     }
 
-    private int clampRow(int row) {
+    private int clampSelectionRow(int row) {
+        if (terminalView.mEmulator == null) return 0;
         TerminalBuffer screen = terminalView.mEmulator.getScreen();
-        int scrollRows = screen.getActiveRows() - terminalView.mEmulator.mRows;
-        if (row < -scrollRows) {
-            return -scrollRows;
-        }
-        return Math.min(row, terminalView.mEmulator.mRows - 1);
+        int scrollRows = screen.getActiveTranscriptRows();
+        int minRow = -scrollRows;
+        int maxRow = Math.max(minRow, terminalView.getTopRow() + terminalView.mEmulator.mRows - 1);
+        if (row < minRow) return minRow;
+        if (row > maxRow) return maxRow;
+        return row;
     }
 
     private boolean comesBefore(int rowA, int colA, int rowB, int colB) {
         return rowA < rowB || (rowA == rowB && colA <= colB);
     }
-
 }

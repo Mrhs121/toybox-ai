@@ -1905,10 +1905,17 @@ public final class MainActivity extends AppCompatActivity implements TerminalVie
             .setView(dialogView)
             .create();
         dialog.setOnShowListener(ignored -> {
-            if (dialog.getWindow() != null) {
-                dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-            }
-        });
+         if (dialog.getWindow() != null) {
+             dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+             int hostWidth = binding.getRoot().getWidth();
+             if (hostWidth <= 0) {
+                 hostWidth = getResources().getDisplayMetrics().widthPixels;
+             }
+             int maxWidthPx = Math.round(520 * getResources().getDisplayMetrics().density);
+             int targetWidth = Math.min(Math.round(hostWidth * 0.92f), maxWidthPx);
+             dialog.getWindow().setLayout(targetWidth, android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
+         }
+     });
         cancelButton.setOnClickListener(v -> dialog.dismiss());
         saveButton.setOnClickListener(v -> {
             SshConnectionConfig config = buildConnectionConfig(
